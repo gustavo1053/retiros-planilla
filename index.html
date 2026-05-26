@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Control de Retiros 2026</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Calibri,Arial,sans-serif;font-size:11px;background:#f0f0f0;color:#000}
+.app-header{background:#1f3864;color:#fff;padding:8px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:200;flex-wrap:wrap}
+.app-header h1{font-size:13px;font-weight:700;letter-spacing:.04em}
+.mes-sel{background:#fff;color:#000;border:none;padding:4px 8px;font-size:12px;border-radius:3px;cursor:pointer}
+.btn-g{border:none;padding:5px 12px;font-size:11px;font-weight:700;border-radius:3px;cursor:pointer}
+.btn-save{background:#00b050;color:#fff}
+.btn-save:hover{background:#008040}
+.btn-exp{background:#c55a11;color:#fff}
+.saved-ind{font-size:10px;color:#90ee90;display:none}
+.sheet-tabs{display:flex;gap:0;background:#d0d0d0;border-bottom:2px solid #888;overflow-x:auto;position:sticky;top:37px;z-index:190}
+.stab{padding:5px 13px;border:1px solid #aaa;border-bottom:none;background:#c8c8c8;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;color:#333}
+.stab.active{background:#fff;border-bottom:2px solid #fff;margin-bottom:-2px;color:#000}
+.stab:hover:not(.active){background:#ddd}
+.sheet{display:none;padding:10px 12px;overflow-x:auto}
+.sheet.active{display:block}
+table{border-collapse:collapse;font-size:11px;margin-bottom:10px}
+td,th{border:1px solid #bbb;padding:2px 5px;white-space:nowrap;min-width:20px;vertical-align:middle;height:20px}
+th{background:#d9e1f2;font-weight:700;text-align:center}
+.p18{background:#FFFF00!important;color:#000;font-weight:700}
+.p19{background:#FFC000!important;color:#000;font-weight:700}
+.p21{background:#FF0000!important;color:#fff;font-weight:700}
+.p22{background:#00B050!important;color:#fff;font-weight:700}
+.p23{background:#0070C0!important;color:#fff;font-weight:700}
+.p24{background:#7030A0!important;color:#fff;font-weight:700}
+.p25{background:#00B0F0!important;color:#000;font-weight:700}
+.psm{background:#e0e0e0!important;color:#000;font-weight:700}
+.rojo{background:#FF0000!important;color:#000;font-weight:700}
+.calc{text-align:right;font-weight:700;background:#f9f9e8}
+.calc-r{background:#FF0000!important;color:#000;font-weight:700;text-align:right}
+input.c{border:none;background:transparent;width:100%;font-family:Calibri,Arial,sans-serif;font-size:11px;text-align:right;padding:0 2px;color:#000;outline:none}
+input.c:focus{background:#e8f0fe}
+input.c.lft{text-align:left}
+input.c.wh{color:#fff}
+.shdr{background:#1f3864;color:#fff;font-weight:700;font-size:12px;padding:4px 10px;margin-bottom:4px}
+.blk{border:1px solid #ccc;margin-bottom:10px;background:#fff}
+.blkhdr{background:#d9e1f2;font-weight:700;padding:3px 8px;font-size:11px;border-bottom:1px solid #ccc;display:flex;gap:12px;align-items:center}
+.feriado{background:#FFE0E0!important}
+.autosave{position:fixed;bottom:8px;right:12px;background:#333;color:#fff;font-size:10px;padding:3px 8px;border-radius:3px;display:none;z-index:300}
+/* Controles fecha/periodo */
+.period-ctrl{display:flex;align-items:center;gap:4px}
+.arr-btn{background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.4);border-radius:3px;width:20px;height:20px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;font-weight:700}
+.arr-btn:hover{background:rgba(255,255,255,0.4)}
+.period-lbl{font-weight:700;font-size:11px;color:#fff;min-width:160px;text-align:center;background:rgba(255,255,255,0.1);border-radius:3px;padding:2px 8px}
+.day-ctrl{display:flex;align-items:center;gap:3px}
+.day-arr{background:#e8eef8;border:1px solid #aaa;border-radius:2px;width:18px;height:18px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
+.day-arr:hover{background:#c8d8f0}
+.day-lbl{font-size:11px;font-weight:700;min-width:70px;text-align:center;background:#f0f4fc;border:1px solid #bbb;border-radius:2px;padding:1px 4px}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>📋 CONTROL DE RETIROS</h1>
+  <select class="mes-sel" id="mesSelect" onchange="cambiarMes()">
+    <option value="Mayo 2026">Mayo 2026</option>
+    <option value="Junio 2026">Junio 2026</option>
+    <option value="Julio 2026">Julio 2026</option>
+    <option value="Agosto 2026">Agosto 2026</option>
+    <option value="Septiembre 2026">Septiembre 2026</option>
+    <option value="Octubre 2026">Octubre 2026</option>
+    <option value="Noviembre 2026">Noviembre 2026</option>
+    <option value="Diciembre 2026">Diciembre 2026</option>
+  </select>
+  <button class="btn-g btn-save" onclick="guardar()">💾 Guardar</button>
+  <button class="btn-g btn-exp" onclick="exportarCSV()">📥 Exportar CSV</button>
+  <span class="saved-ind" id="savedInd">✓ Guardado</span>
+</div>
+
+<div class="sheet-tabs">
+  <div class="stab active" onclick="showSheet('sh_s1',this)">Semana 1</div>
+  <div class="stab" onclick="showSheet('sh_s2',this)">Semana 2</div>
+  <div class="stab" onclick="showSheet('sh_s3',this)">Semana 3</div>
+  <div class="stab" onclick="showSheet('sh_s4',this)">Semana 4</div>
+  <div class="stab" onclick="showSheet('sh_carga',this)">Carga Fi</div>
+  <div class="stab" onclick="showSheet('sh_su1',this)">Sueldos 1</div>
+  <div class="stab" onclick="showSheet('sh_su2',this)">Sueldos 2</div>
+  <div class="stab" onclick="showSheet('sh_su3',this)">Sueldos 3</div>
+  <div class="stab" onclick="showSheet('sh_su4',this)">Sueldos 4</div>
+  <div class="stab" onclick="showSheet('sh_dir',this)">Direcciones</div>
+  <div class="stab" onclick="showSheet('sh_fra',this)">Francos</div>
+</div>
+
+<div id="sh_s1"    class="sheet active"></div>
+<div id="sh_s2"    class="sheet"></div>
+<div id="sh_s3"    class="sheet"></div>
+<div id="sh_s4"    class="sheet"></div>
+<div id="sh_carga" class="sheet"></div>
+<div id="sh_su1"   class="sheet"></div>
+<div id="sh_su2"   class="sheet"></div>
+<div id="sh_su3"   class="sheet"></div>
+<div id="sh_su4"   class="sheet"></div>
+<div id="sh_dir"   class="sheet"></div>
+<div id="sh_fra"   class="sheet"></div>
+
+<div class="autosave" id="asMsg">Guardando...</div>
+
+<script>
+// ── CONSTANTES ──────────────────────────────────────────────
+const PANELES = ['Age 18','Age 19','Age 21','Age 22','Age 23','Age 24','Age 25','Sm'];
+const PC = ['p18','p19','p21','p22','p23','p24','p25','psm'];
+const DIAS_NOMBRE = ['LUNES','MARTES','MIÉRCOLES','JUEVES','VIERNES','SÁBADO','DOMINGO'];
+const DIAS_CORTO  = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+const PERSONAL = [
+  [{n:'Andrea',t:'M'},{n:'Meli',t:'T'},{n:'Tammi',t:'N'}],
+  [{n:'Lourdes',t:'M'},{n:'Ingrid',t:'T'},{n:'Nico',t:'N'}],
+  [{n:'Nao',t:'M'},{n:'Jhona',t:'T'},{n:'Majo',t:'N'}],
+  [{n:'Mili',t:'M'},{n:'Vero',t:'T'},{n:'Jenni',t:'N'}],
+  [{n:'Agus M',t:'M'},{n:'Maria',t:'T'},{n:'Anto',t:'N'}],
+  [{n:'Agus',t:'M'},{n:'Romi',t:'T'},{n:'Jhoa',t:'N'}],
+  [{n:'Cami',t:'M'},{n:'Thiago',t:'T'},{n:'May',t:'N'}],
+  [{n:'Rafa',t:'M'},{n:'Brisa',t:'T'},{n:'Mile',t:'N'}],
+];
+
+// ── ESTADO ──────────────────────────────────────────────────
+let MES = 'Mayo 2026';
+let DATA = {};
+
+function g(k)   { return (DATA[MES] && DATA[MES][k] != null) ? DATA[MES][k] : ''; }
+function s(k,v) { if (!DATA[MES]) DATA[MES]={}; DATA[MES][k]=v; }
+function nv(v)  { return parseFloat((String(v)).replace(/\./g,'').replace(',','.')) || 0; }
+function fmt(v) { return v ? Math.round(v).toLocaleString('es-AR') : ''; }
+
+// ── NAV ─────────────────────────────────────────────────────
+function showSheet(id, el) {
+  document.querySelectorAll('.sheet').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.stab').forEach(x => x.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+}
+
+function cambiarMes() {
+  MES = document.getElementById('mesSelect').value;
+  renderAll();
+}
+
+// ── INPUT HELPER ─────────────────────────────────────────────
+function inp(id, extra='', ph='') {
+  const val = g(id);
+  return `<input class="c ${extra}" id="${id}" value="${val}" placeholder="${ph}"
+    oninput="onInp(this)" onchange="onInp(this)">`;
+}
+
+function onInp(el) {
+  s(el.id, el.value);
+  const id = el.id;
+
+  // Semana día: sh_s1_d2_p3_m  → recalc ese día
+  const mDia = id.match(/^(sh_s\d)_d(\d+)_(p\d+_[mtn]|retL|retM|pagF|banco|gasto|usd)$/);
+  if (mDia) { recalcDia(mDia[1], parseInt(mDia[2])); recalcSemRes(mDia[1]); }
+
+  // Sueldo: sh_su1_... → recalc ese sueldo
+  const mSu = id.match(/^(sh_su\d)_/);
+  if (mSu) recalcSueldo(mSu[1]);
+
+  // Carga: sh_carga_p2_c0_d3 → recalc esa carga
+  const mCg = id.match(/^(sh_carga)_p(\d+)_c(\d+)_d(\d+)$/);
+  if (mCg) recalcCarga(parseInt(mCg[3]));
+
+  autoSave();
+}
+
+// ── SETCALC ──────────────────────────────────────────────────
+function sc(id, val) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = fmt(val); el._val = val || 0; }
+}
+
+// ── RECALC DÍA ───────────────────────────────────────────────
+function recalcDia(sem, d) {
+  let totM=0, totT=0, totN=0;
+  PANELES.forEach((p,pi) => {
+    totM += nv(g(`${sem}_d${d}_p${pi}_m`));
+    totT += nv(g(`${sem}_d${d}_p${pi}_t`));
+    totN += nv(g(`${sem}_d${d}_p${pi}_n`));
+  });
+  const banco = nv(g(`${sem}_d${d}_banco`));
+  const retL  = nv(g(`${sem}_d${d}_retL`));
+  const retM  = nv(g(`${sem}_d${d}_retM`));
+  const pagF  = nv(g(`${sem}_d${d}_pagF`));
+  const gasto = nv(g(`${sem}_d${d}_gasto`));
+  const usd   = nv(g(`${sem}_d${d}_usd`));
+  const total = totM + totT + totN + banco;
+  const sub   = total - retL - retM - pagF - gasto - usd;
+  sc(`${sem}_d${d}_totM`, totM);
+  sc(`${sem}_d${d}_totT`, totT);
+  sc(`${sem}_d${d}_totN`, totN);
+  sc(`${sem}_d${d}_total`, total);
+  sc(`${sem}_d${d}_sub`,   sub);
+}
+
+function recalcSemRes(sem) {
+  PANELES.forEach((p,pi) => {
+    let tot=0;
+    for (let d=0; d<7; d++) {
+      tot += nv(g(`${sem}_d${d}_p${pi}_m`));
+      tot += nv(g(`${sem}_d${d}_p${pi}_t`));
+      tot += nv(g(`${sem}_d${d}_p${pi}_n`));
+    }
+    sc(`${sem}_res_p${pi}`, tot);
+  });
+  let tL=0, tM=0;
+  for (let d=0; d<7; d++) {
+    tL += nv(g(`${sem}_d${d}_retL`));
+    tM += nv(g(`${sem}_d${d}_retM`));
+  }
+  sc(`${sem}_totRetL`, tL);
+  sc(`${sem}_totRetM`, tM);
+}
+
+// ── RECALC SUELDO ────────────────────────────────────────────
+function recalcSueldo(su) {
+  for (let d=0; d<7; d++) {
+    let col=0;
+    PANELES.forEach((p,pi) => {
+      PERSONAL[pi].forEach((per,peri) => {
+        col += nv(g(`${su}_p${pi}_r${peri}_d${d}`));
+      });
+    });
+    sc(`${su}_col${d}`, col);
+  }
+  let grand=0;
+  for (let d=0; d<7; d++) {
+    const el = document.getElementById(`${su}_col${d}`);
+    grand += el ? (el._val||0) : 0;
+  }
+  sc(`${su}_subtot`, grand);
+  // totales por persona
+  PANELES.forEach((p,pi) => {
+    PERSONAL[pi].forEach((per,peri) => {
+      let tot=0;
+      for (let d=0; d<7; d++) tot += nv(g(`${su}_p${pi}_r${peri}_d${d}`));
+      tot += nv(g(`${su}_p${pi}_r${peri}_prop`));
+      sc(`${su}_p${pi}_r${peri}_tot`, tot);
+    });
+  });
+}
+
+// ── RECALC CARGA ─────────────────────────────────────────────
+function recalcCarga(ci) {
+  PANELES.forEach((p,pi) => {
+    let row=0;
+    for (let d=0; d<7; d++) row += nv(g(`sh_carga_p${pi}_c${ci}_d${d}`));
+    sc(`cg_p${pi}_c${ci}_tot`, row*0.7);
+  });
+  for (let d=0; d<7; d++) {
+    let col=0;
+    PANELES.forEach((p,pi) => col += nv(g(`sh_carga_p${pi}_c${ci}_d${d}`)));
+    sc(`cg_c${ci}_d${d}_tot`, col);
+  }
+  let grand=0;
+  PANELES.forEach((p,pi) => {
+    let row=0;
+    for (let d=0; d<7; d++) row += nv(g(`sh_carga_p${pi}_c${ci}_d${d}`));
+    grand += row;
+  });
+  sc(`cg_c${ci}_grand`, grand*0.7);
+}
+
+// ── HELPERS FECHA ────────────────────────────────────────────
+// Devuelve el lunes de la semana N del mes (0-indexed)
+function luneSemana(mesStr, semIdx) {
+  const [mesNom, anio] = mesStr.split(' ');
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const m = meses.indexOf(mesNom);
+  const y = parseInt(anio);
+  // Encontrar el primer lunes del mes
+  let d = new Date(y, m, 1);
+  while (d.getDay() !== 1) d.setDate(d.getDate()+1);
+  // Avanzar semIdx semanas
+  d.setDate(d.getDate() + semIdx*7);
+  return d;
+}
+
+function periodoLabel(lunes) {
+  const dom = new Date(lunes); dom.setDate(lunes.getDate()+6);
+  const pad = n => String(n).padStart(2,'0');
+  return `${pad(lunes.getDate())}/${pad(lunes.getMonth()+1)} al ${pad(dom.getDate())}/${pad(dom.getMonth()+1)}/${dom.getFullYear()}`;
+}
+
+function fechaDia(lunes, d) {
+  const dt = new Date(lunes); dt.setDate(lunes.getDate()+d);
+  const pad = n => String(n).padStart(2,'0');
+  return `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}`;
+}
+
+// semIdx: 0-3 para s1-s4
+const SEM_IDX = {'sh_s1':0,'sh_s2':1,'sh_s3':2,'sh_s4':3};
+
+function getSemOffset(shId) {
+  const key = shId+'_offset';
+  return parseInt(g(key)) || 0;
+}
+
+function moveSem(shId, delta) {
+  const key = shId+'_offset';
+  const cur = getSemOffset(shId);
+  s(key, cur+delta);
+  renderSemana(shId, ''); // re-render
+  // Actualizar titulo
+  const idx = SEM_IDX[shId] !== undefined ? SEM_IDX[shId] : 0;
+  const lunes = getLunesSem(shId);
+  const el = document.getElementById(shId+'_periodo_lbl');
+  if(el) el.textContent = periodoLabel(lunes);
+}
+
+function getLunesSem(shId) {
+  const base = SEM_IDX[shId] !== undefined ? SEM_IDX[shId] : 0;
+  const offset = getSemOffset(shId);
+  const lunes = luneSemana(MES, base + offset);
+  return lunes;
+}
+
+function moveDay(shId, dIdx, delta) {
+  const key = `${shId}_d${dIdx}_offset`;
+  const cur = parseInt(g(key)) || 0;
+  s(key, cur+delta);
+  // Actualizar label del día
+  const lunes = getLunesSem(shId);
+  const dt = new Date(lunes); dt.setDate(lunes.getDate()+dIdx + (cur+delta));
+  const pad = n => String(n).padStart(2,'0');
+  const fechaStr = `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}`;
+  const lblEl = document.getElementById(`${shId}_d${dIdx}_flbl`);
+  if(lblEl) lblEl.textContent = fechaStr;
+  autoSave();
+}
+
+// ── RENDER SEMANA ────────────────────────────────────────────
+function renderSemana(shId, titulo) {
+  const el = document.getElementById(shId);
+  if (!el) return;
+
+  const semIdx = SEM_IDX[shId] !== undefined ? SEM_IDX[shId] : 0;
+  const lunes = getLunesSem(shId);
+  const periodo = periodoLabel(lunes);
+
+  // Titulo real
+  const tit = titulo || `${MES} — Semana ${semIdx+1}`;
+
+  let h = `<div class="shdr" style="display:flex;align-items:center;gap:10px">
+    <span>${tit}</span>
+    <div class="period-ctrl">
+      <button class="arr-btn" onclick="moveSem('${shId}',-1)" title="Semana anterior">&#8592;</button>
+      <span class="period-lbl" id="${shId}_periodo_lbl">${periodo}</span>
+      <button class="arr-btn" onclick="moveSem('${shId}',1)" title="Semana siguiente">&#8594;</button>
+    </div>
+  </div>`;
+
+  for (let d=0; d<7; d++) {
+    const dk = `${shId}_d${d}`;
+    const dayOffset = parseInt(g(`${dk}_offset`)) || 0;
+    const dt = new Date(lunes); dt.setDate(lunes.getDate()+d+dayOffset);
+    const pad = n => String(n).padStart(2,'0');
+    const fechaStr = `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}`;
+    const diaNom = DIAS_NOMBRE[d];
+
+    h += `<div class="blk">
+    <div class="blkhdr">
+      <span style="font-weight:700;min-width:90px">${diaNom}</span>
+      <div class="day-ctrl">
+        <button class="day-arr" onclick="moveDay('${shId}',${d},-1)" title="Día anterior">&#8592;</button>
+        <span class="day-lbl" id="${dk}_flbl">${fechaStr}</span>
+        <button class="day-arr" onclick="moveDay('${shId}',${d},1)" title="Día siguiente">&#8594;</button>
+      </div>
+    </div>
+    <table>
+      <thead><tr>
+        <th style="width:65px">Fecha</th>
+        <th style="width:100px">Panel</th>
+        <th style="width:120px">Mañana</th>
+        <th style="width:120px">Tarde</th>
+        <th style="width:120px">Noche</th>
+      </tr></thead>
+      <tbody>`;
+
+    PANELES.forEach((p,pi) => {
+      h += `<tr>
+        <td>${d===0 ? DIAS_CORTO[d] : ''}</td>
+        <td class="${PC[pi]}">${p}</td>
+        <td>${inp(`${dk}_p${pi}_m`)}</td>
+        <td>${inp(`${dk}_p${pi}_t`)}</td>
+        <td>${inp(`${dk}_p${pi}_n`)}</td>
+      </tr>`;
+    });
+
+    h += `
+      <tr class="rojo">
+        <td></td><td>Total Dia</td>
+        <td class="calc-r" id="${dk}_totM"></td>
+        <td class="calc-r" id="${dk}_totT"></td>
+        <td class="calc-r" id="${dk}_totN"></td>
+      </tr>
+      <tr><td></td><td style="font-weight:700">Lezcano Retiro</td>
+        <td>${inp(`${dk}_retL`)}</td><td></td><td></td></tr>
+      <tr><td></td><td style="font-weight:700">Martin Retiro</td>
+        <td>${inp(`${dk}_retM`)}</td><td></td><td></td></tr>
+      <tr><td></td><td style="font-weight:700">Pagos Fichas</td>
+        <td>${inp(`${dk}_pagF`)}</td><td></td><td></td></tr>
+      <tr style="background:#e8f4e8"><td></td><td style="font-weight:700">banco</td>
+        <td>${inp(`${dk}_banco`)}</td><td></td><td></td></tr>
+      <tr class="rojo"><td></td><td>Total</td>
+        <td class="calc-r" id="${dk}_total"></td><td></td><td></td></tr>
+      <tr><td></td><td style="font-weight:700">Gasto</td>
+        <td>${inp(`${dk}_gasto`)}</td><td></td><td></td></tr>
+      <tr><td></td><td style="font-weight:700">Compra Us$</td>
+        <td>${inp(`${dk}_usd`)}</td><td></td><td></td></tr>
+      <tr class="rojo"><td></td><td>Sub Total</td>
+        <td class="calc-r" id="${dk}_sub"></td><td></td><td></td></tr>
+      </tbody></table></div>`;
+  }
+
+  // Resumen por panel
+  h += `<div class="shdr" style="background:#2e4a7a;font-size:11px;margin-top:6px">
+    Resumen acumulado semana por panel</div>
+  <table><thead><tr>`;
+  PANELES.forEach((p,pi) => h += `<th class="${PC[pi]}">${p}</th>`);
+  h += `</tr></thead><tbody><tr>`;
+  PANELES.forEach((p,pi) => h += `<td class="calc" id="${shId}_res_p${pi}" style="min-width:95px"></td>`);
+  h += `</tr></tbody></table>
+  <div style="padding:4px;font-size:11px;display:flex;gap:20px">
+    <span>Retiros Martin:&nbsp;<b id="${shId}_totRetM" style="color:#c00"></b></span>
+    <span>Retiros Lezcano:&nbsp;<b id="${shId}_totRetL" style="color:#c00"></b></span>
+  </div><br>`;
+
+  el.innerHTML = h;
+
+  // Recalcular todo
+  for (let d=0; d<7; d++) recalcDia(shId, d);
+  recalcSemRes(shId);
+}
+
+// ── RENDER CARGAS ────────────────────────────────────────────
+function renderCargas() {
+  const el = document.getElementById('sh_carga');
+  if (!el) return;
+  const SEMS = ['Semana 1','Semana 2','Semana 3','Semana 4','Semana 5'];
+  let h = '';
+
+  SEMS.forEach((label, ci) => {
+    h += `<div class="shdr">${label} &nbsp;
+      <input class="c lft wh" id="sh_carga_c${ci}_label" value="${g('sh_carga_c'+ci+'_label')}"
+        placeholder="Ej: 04/05 al 10/05" style="width:160px;background:transparent"
+        oninput="onInp(this)" onchange="onInp(this)">
+      <span style="font-weight:400;font-size:10px">&nbsp;×0.7</span>
+    </div>
+    <table><thead><tr><th>Panel</th>`;
+    DIAS_CORTO.forEach(d => h += `<th>${d}</th>`);
+    h += `<th style="background:#fff3a0">Total ×0.7</th></tr></thead><tbody>`;
+
+    PANELES.forEach((p,pi) => {
+      h += `<tr><td class="${PC[pi]}">${p}</td>`;
+      for (let d=0; d<7; d++) {
+        h += `<td>${inp(`sh_carga_p${pi}_c${ci}_d${d}`)}</td>`;
+      }
+      h += `<td class="calc" style="background:#fff3a0" id="cg_p${pi}_c${ci}_tot"></td></tr>`;
+    });
+
+    h += `<tr class="rojo"><td>TOTAL</td>`;
+    for (let d=0; d<7; d++) h += `<td class="calc-r" id="cg_c${ci}_d${d}_tot"></td>`;
+    h += `<td class="calc-r" id="cg_c${ci}_grand"></td></tr>`;
+    h += `</tbody></table><br>`;
+  });
+
+  el.innerHTML = h;
+  for (let ci=0; ci<5; ci++) recalcCarga(ci);
+}
+
+// ── RENDER SUELDOS ───────────────────────────────────────────
+function renderSueldo(shId, titulo) {
+  const el = document.getElementById(shId);
+  if (!el) return;
+
+  let h = `<div class="shdr">${titulo} &nbsp;
+    <input class="c lft wh" id="${shId}_period" value="${g(shId+'_period')}"
+      placeholder="Ej: 04/05 al 10/05" style="width:170px;background:transparent"
+      oninput="onInp(this)" onchange="onInp(this)">
+  </div>
+  <table><thead><tr>
+    <th>Panel</th><th>Personal</th><th>Sueldo $</th><th>Turno</th>`;
+  DIAS_CORTO.forEach(d => h += `<th>${d}</th>`);
+  h += `<th style="background:#d9e1f2">Propina</th>
+    <th style="background:#e6ffe6">Total</th>
+  </tr></thead><tbody>`;
+
+  let pAnterior = -1;
+  PANELES.forEach((p,pi) => {
+    PERSONAL[pi].forEach((per,ri) => {
+      const sep = pi !== pAnterior ? 'border-top:2px solid #888' : '';
+      pAnterior = pi;
+      h += `<tr style="${sep}">
+        <td class="${PC[pi]}">${p}</td>
+        <td><input class="c lft" id="${shId}_p${pi}_r${ri}_nom"
+          value="${g(shId+'_p'+pi+'_r'+ri+'_nom') || per.n}"
+          oninput="onInp(this)" onchange="onInp(this)" style="min-width:70px"></td>
+        <td><input class="c" id="${shId}_p${pi}_r${ri}_sue"
+          value="${g(shId+'_p'+pi+'_r'+ri+'_sue') || 35000}"
+          oninput="onInp(this)" onchange="onInp(this)" style="width:70px"></td>
+        <td style="text-align:center">${per.t}</td>`;
+      for (let d=0; d<7; d++) {
+        h += `<td>${inp(`${shId}_p${pi}_r${ri}_d${d}`)}</td>`;
+      }
+      h += `<td>${inp(`${shId}_p${pi}_r${ri}_prop`)}</td>
+        <td class="calc" style="background:#e6ffe6" id="${shId}_p${pi}_r${ri}_tot"></td>
+      </tr>`;
+    });
+  });
+
+  h += `<tr class="rojo"><td colspan="4">TOTAL</td>`;
+  for (let d=0; d<7; d++) h += `<td class="calc-r" id="${shId}_col${d}"></td>`;
+  h += `<td></td><td class="calc-r" id="${shId}_subtot"></td></tr>
+  </tbody></table>
+
+  <br><div class="shdr" style="background:#444;font-size:11px">Personal / Gerencia</div>
+  <table><thead><tr>
+    <th>Personal</th><th>Sueldo base</th><th>Quince</th><th>Semanal</th><th>Mensual</th>
+    <th>Sem 1</th><th>Sem 2</th><th>Sem 3</th><th>Sem 4</th>
+  </tr></thead><tbody>`;
+
+  ['Gustavo','Jazmin','Joha','Emi'].forEach((nom,gi) => {
+    h += `<tr>
+      <td><input class="c lft" id="${shId}_g${gi}_nom" value="${g(shId+'_g'+gi+'_nom')||nom}"
+        oninput="onInp(this)" style="min-width:70px"></td>
+      <td>${inp(`${shId}_g${gi}_base`)}</td>
+      <td>${inp(`${shId}_g${gi}_q`)}</td>
+      <td>${inp(`${shId}_g${gi}_sem`)}</td>
+      <td>${inp(`${shId}_g${gi}_men`)}</td>
+      <td>${inp(`${shId}_g${gi}_s1`)}</td>
+      <td>${inp(`${shId}_g${gi}_s2`)}</td>
+      <td>${inp(`${shId}_g${gi}_s3`)}</td>
+      <td>${inp(`${shId}_g${gi}_s4`)}</td>
+    </tr>`;
+  });
+  h += `</tbody></table>`;
+
+  el.innerHTML = h;
+  recalcSueldo(shId);
+}
+
+// ── GUARDAR / AUTOSAVE ───────────────────────────────────────
+let asTimer = null;
+function autoSave() {
+  clearTimeout(asTimer);
+  asTimer = setTimeout(() => {
+    localStorage.setItem('retiros26', JSON.stringify(DATA));
+    const m = document.getElementById('asMsg');
+    if (m) { m.style.display='block'; setTimeout(()=>m.style.display='none',1000); }
+  }, 700);
+}
+
+function guardar() {
+  localStorage.setItem('retiros26', JSON.stringify(DATA));
+  const m = document.getElementById('savedInd');
+  if (m) { m.style.display='inline'; setTimeout(()=>m.style.display='none',2000); }
+}
+
+function cargarStorage() {
+  try {
+    const raw = localStorage.getItem('retiros26');
+    if (raw) DATA = JSON.parse(raw);
+  } catch(e) { DATA = {}; }
+}
+
+// ── EXPORTAR CSV ─────────────────────────────────────────────
+function exportarCSV() {
+  const rows = [[`Control de Retiros — ${MES}`],[]];
+  ['sh_s1','sh_s2','sh_s3','sh_s4'].forEach((sem,si) => {
+    rows.push([`Semana ${si+1}: ${g(sem+'_period')}`]);
+    rows.push(['Día','Panel','Mañana','Tarde','Noche','Ret.Lez','Ret.Mar','P.Fichas','Banco','Gasto','US$','SubTotal']);
+    for (let d=0; d<7; d++) {
+      const dk=`${sem}_d${d}`;
+      let tM=0,tT=0,tN=0;
+      PANELES.forEach((p,pi)=>{
+        tM+=nv(g(`${dk}_p${pi}_m`)); tT+=nv(g(`${dk}_p${pi}_t`)); tN+=nv(g(`${dk}_p${pi}_n`));
+        const m=g(`${dk}_p${pi}_m`), t=g(`${dk}_p${pi}_t`), n=g(`${dk}_p${pi}_n`);
+        if(m||t||n) rows.push(['',p,m||0,t||0,n||0,'','','','','','','']);
+      });
+      const banco=nv(g(`${dk}_banco`)), retL=nv(g(`${dk}_retL`)), retM=nv(g(`${dk}_retM`));
+      const pagF=nv(g(`${dk}_pagF`)), gasto=nv(g(`${dk}_gasto`)), usd=nv(g(`${dk}_usd`));
+      const sub=tM+tT+tN+banco-retL-retM-pagF-gasto-usd;
+      rows.push([g(`${dk}_nom`)||DIAS_NOMBRE[d],'TOTAL',tM,tT,tN,retL,retM,pagF,banco,gasto,usd,sub]);
+    }
+    rows.push([]);
+  });
+  const csv = '\uFEFF' + rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download = `Retiros_${MES.replace(' ','_')}.csv`;
+  a.click();
+}
+
+// ── RENDER DIRECCIONES ───────────────────────────────────────
+function renderDirecciones() {
+  const el = document.getElementById('sh_dir');
+  if (!el) return;
+
+  const DIRS_DEF = [
+    {nom:'Andrea', dir:'Charlone 2167 (Villa Ortuza)',    mod:'HP I5',   panel:18, t:'M'},
+    {nom:'Meli',   dir:'Wagner 959 (Hurlingam)',           mod:'—',       panel:18, t:'T'},
+    {nom:'Tammi',  dir:'San Javier 2060 (Pablo Podestá)', mod:'HP I7',   panel:18, t:'N'},
+    {nom:'Lourdes',dir:'Belgrano 107 (Burzaco)',          mod:'HP I5',   panel:19, t:'M'},
+    {nom:'Ingrid', dir:'Vicente López y Planes 8471 (Podestá)', mod:'HP I5', panel:19, t:'T'},
+    {nom:'Nico',   dir:'Juan B. Alberdi 5691 (Caseros)',  mod:'HP I5',   panel:19, t:'N'},
+    {nom:'Nao',    dir:'—',                               mod:'HP I5',   panel:21, t:'M'},
+    {nom:'Jhona',  dir:'Pichincha 4780 (Villa Coronel)',  mod:'ASUS I3', panel:21, t:'T'},
+    {nom:'Majo',   dir:'Ríos 1038 (Glew)',               mod:'—',       panel:21, t:'N'},
+    {nom:'Mili',   dir:'J.M. Bosche 6172 (San Martín)',  mod:'ASUS x515ea', panel:22, t:'M'},
+    {nom:'Vero',   dir:'Ceferino Namuncurá 3302 (Lanús)', mod:'HP I7',  panel:22, t:'T'},
+    {nom:'Jenni',  dir:'Prov. Santa Fe 68 entre Silva y Espora', mod:'Dell', panel:22, t:'N'},
+    {nom:'Agus M', dir:'J.M. Bosche 6172 (San Martín)',  mod:'HP I3',   panel:23, t:'M'},
+    {nom:'Maria',  dir:'Cucha Cucha 779 (Caballito)',    mod:'—',       panel:23, t:'T'},
+    {nom:'Anto',   dir:'López 2898',                     mod:'—',       panel:23, t:'N'},
+    {nom:'Agus',   dir:'L. López 2700 (Claypole)',       mod:'—',       panel:24, t:'M'},
+    {nom:'Romi',   dir:'J. Mazzini 2853 (Hurlingam)',    mod:'I3',      panel:24, t:'T'},
+    {nom:'Jhoa',   dir:'511 2478 (Florencio Varela)',    mod:'—',       panel:24, t:'N'},
+    {nom:'Cami',   dir:'Augusto Prieto 553 (Lanús)',     mod:'HP I7',   panel:25, t:'M'},
+    {nom:'Thiago', dir:'L. López 2700 (Claypole)',       mod:'—',       panel:25, t:'T'},
+    {nom:'Mayra',  dir:'Crisantemos 5965 (San Martín)',  mod:'HP I7',   panel:25, t:'N'},
+    {nom:'Rafa',   dir:'Cucha Cucha 779 (Caballito)',    mod:'—',       panel:'SM', t:'M'},
+    {nom:'Brisa',  dir:'Lacroze 2053 (Villa Lynch)',     mod:'I7',      panel:'SM', t:'T'},
+    {nom:'Mile',   dir:'—',                              mod:'—',       panel:'SM', t:'N'},
+    {nom:'Flor',   dir:'Juan B. Alberdi 5691 (Caseros)', mod:'HP I5',   panel:'Franco N', t:''},
+    {nom:'Ludmi',  dir:'Clemenceau 44 (Gerli)',          mod:'HP I3',   panel:'Franco M', t:''},
+    {nom:'Sofi',   dir:'Pichincha 4780 (Villa Coronel)', mod:'—',       panel:'Franco T', t:''},
+    {nom:'Guada',  dir:'Crisantemos 5965 (San Martín)',  mod:'—',       panel:'Franco',   t:''},
+  ];
+  const PCLS = {18:'p18',19:'p19',20:'p21',21:'p21',22:'p22',23:'p23',24:'p24',25:'p25','SM':'psm'};
+
+  let h = `<div class="shdr">Direcciones del Personal</div>
+  <table>
+    <thead><tr>
+      <th>Nombre</th><th>Dirección</th><th>Modelo</th><th>Panel</th><th>Turno</th><th>Nota</th>
+    </tr></thead><tbody>`;
+
+  let panelAnterior = null;
+  DIRS_DEF.forEach((d, i) => {
+    const pc = PCLS[d.panel] || 'psm';
+    const sep = d.panel !== panelAnterior ? 'border-top:2px solid #888' : '';
+    panelAnterior = d.panel;
+    // Campos editables usando storage con prefijo dir_
+    const nomKey = `dir_${i}_nom`;
+    const dirKey = `dir_${i}_dir`;
+    const modKey = `dir_${i}_mod`;
+    const notKey = `dir_${i}_not`;
+    h += `<tr style="${sep}">
+      <td><input class="c lft" id="${nomKey}" value="${g(nomKey)||d.nom}"
+        oninput="onInp(this)" style="min-width:70px"></td>
+      <td><input class="c lft" id="${dirKey}" value="${g(dirKey)||d.dir}"
+        oninput="onInp(this)" style="min-width:200px"></td>
+      <td><input class="c lft" id="${modKey}" value="${g(modKey)||d.mod}"
+        oninput="onInp(this)" style="min-width:80px"></td>
+      <td class="${pc}" style="text-align:center;font-weight:700">${d.panel}</td>
+      <td style="text-align:center">${d.t}</td>
+      <td><input class="c lft" id="${notKey}" value="${g(notKey)||''}"
+        oninput="onInp(this)" placeholder="nota..." style="min-width:100px"></td>
+    </tr>`;
+  });
+  h += '</tbody></table>';
+  el.innerHTML = h;
+}
+
+// ── RENDER FRANCOS ───────────────────────────────────────────
+function renderFrancos() {
+  const el = document.getElementById('sh_fra');
+  if (!el) return;
+
+  const DIAS = ['Lunes','Martes','Miérc.','Jueves','Viernes','Sábado','Domingo'];
+  const GRUPOS = [
+    {panel:'Age 18', bg:'#FFFF00', tc:'#000',
+     turnos:[
+       {t:'Mañana', d:['Andrea','Lud','Andrea','Andrea','Andrea','Andrea','Andrea']},
+       {t:'Tarde',  d:['Meli','Sofi','Meli','Meli','Meli','Meli','Meli']},
+       {t:'Noche',  d:['Tammi','Tammi','Tammi','Tammi','Flor','Tammi','Tammi']},
+     ]},
+    {panel:'Age 19', bg:'#FFC000', tc:'#000',
+     turnos:[
+       {t:'Mañana', d:['Lourdes','Lourdes','Lourdes','Lourdes','Lourdes','Lourdes','Lourdes']},
+       {t:'Tarde',  d:['Ingrid','Ingrid','Sofi','Ingrid','Ingrid','Ingrid','Ingrid']},
+       {t:'Noche',  d:['Nico','Gua','Nico','Nico','Nico','Nico','Nico']},
+     ]},
+    {panel:'Age 21', bg:'#FF0000', tc:'#fff',
+     turnos:[
+       {t:'Mañana', d:['Nao','Nao','Nao','Nao','Nao','Lud','Nao']},
+       {t:'Tarde',  d:['Jhona','Jhona','Jhona','Jhona','Jhona','Jhona','Gua']},
+       {t:'Noche',  d:['Majo','Majo','Majo','Majo','Majo','Flor','Majo']},
+     ]},
+    {panel:'Age 22', bg:'#00B050', tc:'#fff',
+     turnos:[
+       {t:'Mañana', d:['Mili','Mili','Mili','Mili','Lud','Mili','Mili']},
+       {t:'Tarde',  d:['Vero','Vero','Vero','Vero','Vero','Sofi','Vero']},
+       {t:'Noche',  d:['Gua','Jeni','Jeni','Jeni','Jeni','Jeni','Jeni']},
+     ]},
+    {panel:'Age 23', bg:'#0070C0', tc:'#fff',
+     turnos:[
+       {t:'Mañana', d:['Agus','Agus','Agus','Agus','Agus','Agus','Lud']},
+       {t:'Tarde',  d:['Maria','Maria','Maria','Maria','Maria','Maria','Maria']},
+       {t:'Noche',  d:['Anto','Anto','Anto','Flor','Anto','Anto','Anto']},
+     ]},
+    {panel:'Age 24', bg:'#7030A0', tc:'#fff',
+     turnos:[
+       {t:'Mañana', d:['Agus','Agus','Agus','Lud','Agus','Agus','Agus']},
+       {t:'Tarde',  d:['Romi','Romi','Romi','Romi','Sofi','Romi','Romi']},
+       {t:'Noche',  d:['Flor','Joha','Joha','Joha','Joha','Joha','Joha']},
+     ]},
+    {panel:'Age 25', bg:'#00B0F0', tc:'#000',
+     turnos:[
+       {t:'Mañana', d:['Cami','Cami','Lud','Cami','Cami','Cami','Cami']},
+       {t:'Tarde',  d:['Sofi','Thiago','Thiago','Thiago','Thiago','Thiago','Thiago']},
+       {t:'Noche',  d:['May','May','Flor','May','May','May','May']},
+     ]},
+    {panel:'SM', bg:'#e0e0e0', tc:'#000',
+     turnos:[
+       {t:'Mañana', d:['Rafa','Rafa','Rafa','Rafa','Rafa','Rafa','Rafa']},
+       {t:'Tarde',  d:['Brisa','Brisa','Brisa','Sofi','Brisa','Brisa','Brisa']},
+       {t:'Noche',  d:['Mile','Mile','Mile','Mile','Mile','Mile','Flor']},
+     ]},
+  ];
+
+  // Reemplazantes fijos (celda roja oscura)
+  const REEMPLAZANTES = new Set(['Lud','Sofi','Flor','Gua','Joha']);
+
+  let h = `<div class="shdr">Tabla de Francos</div>
+  <div style="font-size:10px;color:#555;padding:3px 6px;margin-bottom:6px">
+    <span style="background:#C00000;color:#fff;padding:1px 6px;border-radius:2px">Rojo</span> = Reemplazante
+  </div>`;
+
+  GRUPOS.forEach((grp, gi) => {
+    h += `<table style="margin-bottom:10px">
+      <thead>
+        <tr>
+          <th colspan="8" style="background:${grp.bg};color:${grp.tc};text-align:left;padding:4px 8px;font-size:12px">${grp.panel}</th>
+        </tr>
+        <tr>
+          <th style="width:70px"></th>`;
+    DIAS.forEach(d => h += `<th style="min-width:70px">${d}</th>`);
+    h += `</tr></thead><tbody>`;
+
+    grp.turnos.forEach((turno, ti) => {
+      h += `<tr>
+        <td style="font-weight:700;background:${grp.bg};color:${grp.tc};text-align:center">${turno.t}</td>`;
+      turno.d.forEach((persona, di) => {
+        const key = `fra_g${gi}_t${ti}_d${di}`;
+        const val = g(key) || persona;
+        const esReemplazo = REEMPLAZANTES.has(val);
+        const bg = esReemplazo ? '#C00000' : '#fff';
+        const tc = esReemplazo ? '#fff' : '#000';
+        h += `<td style="text-align:center;background:${bg}">
+          <input class="c" id="${key}" value="${val}"
+            oninput="onInp(this);colorFranco(this)"
+            style="text-align:center;color:${tc};background:transparent;min-width:55px">
+        </td>`;
+      });
+      h += `</tr>`;
+    });
+    h += `</tbody></table>`;
+  });
+
+  el.innerHTML = h;
+}
+
+// Colorear celda de franco si es reemplazante
+const REEMPLAZANTES_SET = new Set(['Lud','Sofi','Flor','Gua','Joha']);
+function colorFranco(inp) {
+  const es = REEMPLAZANTES_SET.has(inp.value.trim());
+  inp.parentElement.style.background = es ? '#C00000' : '#fff';
+  inp.style.color = es ? '#fff' : '#000';
+}
+
+// ── RENDER ALL ───────────────────────────────────────────────
+function renderAll() {
+  const mes = document.getElementById('mesSelect').value;
+  MES = mes;
+  renderSemana('sh_s1', `${mes} — Semana 1`);
+  renderSemana('sh_s2', `${mes} — Semana 2`);
+  renderSemana('sh_s3', `${mes} — Semana 3`);
+  renderSemana('sh_s4', `${mes} — Semana 4`);
+  renderCargas();
+  renderSueldo('sh_su1', `Sueldos Semana 1 — ${mes}`);
+  renderSueldo('sh_su2', `Sueldos Semana 2 — ${mes}`);
+  renderSueldo('sh_su3', `Sueldos Semana 3 — ${mes}`);
+  renderSueldo('sh_su4', `Sueldos Semana 4 — ${mes}`);
+  renderDirecciones();
+  renderFrancos();
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  cargarStorage();
+  renderAll();
+});
+</script>
+</body>
+</html>
