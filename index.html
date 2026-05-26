@@ -4,6 +4,26 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Control de Retiros 2026</title>
+<script type="module">
+  import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  const firebaseConfig = {
+    apiKey:            "AIzaSyCGRYyo9EmR0NB3TImzZIP4SuDpDwwMgVc",
+    authDomain:        "planilla-perdidas---ganancias.firebaseapp.com",
+    projectId:         "planilla-perdidas---ganancias",
+    storageBucket:     "planilla-perdidas---ganancias.firebasestorage.app",
+    messagingSenderId: "179047310261",
+    appId:             "1:179047310261:web:2e5ad044d98751985d2ffc"
+  };
+  const app = initializeApp(firebaseConfig, 'retiros');
+  const db  = getFirestore(app);
+  window._db     = db;
+  window._doc    = doc;
+  window._getDoc = getDoc;
+  window._setDoc = setDoc;
+  window._fbReady = true;
+  window.dispatchEvent(new Event('fbReady'));
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Calibri,Arial,sans-serif;font-size:11px;background:#f0f0f0;color:#000}
@@ -545,24 +565,8 @@ function renderSueldo(shId, titulo) {
 }
 
 // ── FIREBASE ─────────────────────────────────────────────────
-let db = null;
-
-async function initFirebase() {
-  const { initializeApp }    = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
-  const { getFirestore, doc, getDoc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-  const firebaseConfig = {
-    apiKey:            "AIzaSyCGRYyo9EmR0NB3TImzZIP4SuDpDwwMgVc",
-    authDomain:        "planilla-perdidas---ganancias.firebaseapp.com",
-    projectId:         "planilla-perdidas---ganancias",
-    storageBucket:     "planilla-perdidas---ganancias.firebasestorage.app",
-    messagingSenderId: "179047310261",
-    appId:             "1:179047310261:web:2e5ad044d98751985d2ffc"
-  };
-  const app = initializeApp(firebaseConfig, 'retiros');
-  db = getFirestore(app);
-  window._fbDoc  = (mes) => doc(db, 'retiros_data', mes.replace(/ /g,'_'));
-  window._getDoc = getDoc;
-  window._setDoc = setDoc;
+function fbDoc(mes) {
+  return window._doc(window._db, 'retiros_data', mes.replace(/ /g,'_'));
 }
 
 // ── GUARDAR / AUTOSAVE ───────────────────────────────────────
@@ -579,9 +583,8 @@ async function guardarFirebase() {
     // Siempre guardar en localStorage como respaldo
     localStorage.setItem('retiros26', JSON.stringify(DATA));
     // Guardar en Firebase si está disponible
-    if (db && window._fbDoc) {
-      const mesKey = MES.replace(/ /g,'_');
-      await window._setDoc(window._fbDoc(MES), { data: JSON.stringify(DATA[MES]||{}), mes: MES, updated: new Date().toISOString() });
+    if (window._fbReady && window._db) {
+      await window._setDoc(fbDoc(MES), { data: JSON.stringify(DATA[MES]||{}), mes: MES, updated: new Date().toISOString() });
     }
     if (m) { m.textContent='✓ Guardado'; setTimeout(()=>m.style.display='none',1200); }
   } catch(e) {
@@ -607,7 +610,7 @@ async function cargarStorage() {
   try {
     await initFirebase();
     if (db && window._fbDoc) {
-      const snap = await window._getDoc(window._fbDoc(MES));
+      const snap = await window._getDoc(fbDoc(MES));
       if (snap.exists()) {
         const remote = JSON.parse(snap.data().data || '{}');
         if (!DATA[MES]) DATA[MES] = {};
