@@ -608,8 +608,7 @@ async function cargarStorage() {
 
   // Luego intentar cargar desde Firebase
   try {
-    await initFirebase();
-    if (db && window._fbDoc) {
+    if (window._fbReady && window._db) {
       const snap = await window._getDoc(fbDoc(MES));
       if (snap.exists()) {
         const remote = JSON.parse(snap.data().data || '{}');
