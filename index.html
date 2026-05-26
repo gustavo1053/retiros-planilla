@@ -544,28 +544,81 @@ function renderSueldo(shId, titulo) {
   recalcSueldo(shId);
 }
 
+// ── FIREBASE ─────────────────────────────────────────────────
+let db = null;
+
+async function initFirebase() {
+  const { initializeApp }    = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
+  const { getFirestore, doc, getDoc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+  const firebaseConfig = {
+    apiKey:            "AIzaSyCGRYyo9EmR0NB3TImzZIP4SuDpDwwMgVc",
+    authDomain:        "planilla-perdidas---ganancias.firebaseapp.com",
+    projectId:         "planilla-perdidas---ganancias",
+    storageBucket:     "planilla-perdidas---ganancias.firebasestorage.app",
+    messagingSenderId: "179047310261",
+    appId:             "1:179047310261:web:2e5ad044d98751985d2ffc"
+  };
+  const app = initializeApp(firebaseConfig, 'retiros');
+  db = getFirestore(app);
+  window._fbDoc  = (mes) => doc(db, 'retiros_data', mes.replace(/ /g,'_'));
+  window._getDoc = getDoc;
+  window._setDoc = setDoc;
+}
+
 // ── GUARDAR / AUTOSAVE ───────────────────────────────────────
 let asTimer = null;
 function autoSave() {
   clearTimeout(asTimer);
-  asTimer = setTimeout(() => {
+  asTimer = setTimeout(() => guardarFirebase(), 800);
+}
+
+async function guardarFirebase() {
+  const m = document.getElementById('asMsg');
+  if (m) { m.style.display='block'; m.textContent='Guardando...'; }
+  try {
+    // Siempre guardar en localStorage como respaldo
     localStorage.setItem('retiros26', JSON.stringify(DATA));
-    const m = document.getElementById('asMsg');
-    if (m) { m.style.display='block'; setTimeout(()=>m.style.display='none',1000); }
-  }, 700);
+    // Guardar en Firebase si está disponible
+    if (db && window._fbDoc) {
+      const mesKey = MES.replace(/ /g,'_');
+      await window._setDoc(window._fbDoc(MES), { data: JSON.stringify(DATA[MES]||{}), mes: MES, updated: new Date().toISOString() });
+    }
+    if (m) { m.textContent='✓ Guardado'; setTimeout(()=>m.style.display='none',1200); }
+  } catch(e) {
+    console.error('Error guardando:', e);
+    if (m) { m.textContent='⚠ Error al guardar'; setTimeout(()=>m.style.display='none',2000); }
+  }
 }
 
 function guardar() {
-  localStorage.setItem('retiros26', JSON.stringify(DATA));
+  guardarFirebase();
   const m = document.getElementById('savedInd');
   if (m) { m.style.display='inline'; setTimeout(()=>m.style.display='none',2000); }
 }
 
-function cargarStorage() {
+async function cargarStorage() {
+  // Primero cargar desde localStorage como fallback rápido
   try {
     const raw = localStorage.getItem('retiros26');
     if (raw) DATA = JSON.parse(raw);
   } catch(e) { DATA = {}; }
+
+  // Luego intentar cargar desde Firebase
+  try {
+    await initFirebase();
+    if (db && window._fbDoc) {
+      const snap = await window._getDoc(window._fbDoc(MES));
+      if (snap.exists()) {
+        const remote = JSON.parse(snap.data().data || '{}');
+        if (!DATA[MES]) DATA[MES] = {};
+        // Merge: Firebase tiene prioridad
+        DATA[MES] = Object.assign({}, DATA[MES], remote);
+        renderAll();
+      }
+    }
+  } catch(e) {
+    console.warn('Firebase no disponible, usando localStorage:', e);
+  }
 }
 
 // ── EXPORTAR CSV ─────────────────────────────────────────────
