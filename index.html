@@ -158,8 +158,9 @@ function showSheet(id, el) {
   el.classList.add('active');
 }
 
-function cambiarMes() {
+async function cambiarMes() {
   MES = document.getElementById('mesSelect').value;
+  await cargarDesdeFirebase();
   renderAll();
 }
 
@@ -607,28 +608,38 @@ function guardar() {
   if (m) { m.style.display='inline'; setTimeout(()=>m.style.display='none',2000); }
 }
 
+async function cargarDesdeFirebase() {
+  try {
+    const snap = await window._getDoc(fbDoc(MES));
+    if (snap.exists()) {
+      const remote = JSON.parse(snap.data().data || '{}');
+      if (!DATA[MES]) DATA[MES] = {};
+      DATA[MES] = Object.assign({}, DATA[MES], remote);
+    }
+  } catch(e) {
+    console.warn('Error cargando Firebase:', e);
+  }
+}
+
 async function cargarStorage() {
-  // Primero cargar desde localStorage como fallback rápido
+  // 1. Cargar localStorage como base rápida
   try {
     const raw = localStorage.getItem('retiros26');
     if (raw) DATA = JSON.parse(raw);
   } catch(e) { DATA = {}; }
 
-  // Luego intentar cargar desde Firebase
-  try {
+  // 2. Esperar hasta 3 segundos a que Firebase esté listo
+  await new Promise(resolve => {
     if (window._fbReady && window._db) {
-      const snap = await window._getDoc(fbDoc(MES));
-      if (snap.exists()) {
-        const remote = JSON.parse(snap.data().data || '{}');
-        if (!DATA[MES]) DATA[MES] = {};
-        // Merge: Firebase tiene prioridad
-        DATA[MES] = Object.assign({}, DATA[MES], remote);
-        renderAll();
-      }
+      resolve();
+    } else {
+      const timeout = setTimeout(resolve, 3000);
+      window.addEventListener('fbReady', () => { clearTimeout(timeout); resolve(); }, { once: true });
     }
-  } catch(e) {
-    console.warn('Firebase no disponible, usando localStorage:', e);
-  }
+  });
+
+  // 3. Cargar desde Firebase (sobreescribe localStorage)
+  await cargarDesdeFirebase();
 }
 
 // ── EXPORTAR CSV ─────────────────────────────────────────────
@@ -864,8 +875,8 @@ function renderAll() {
 }
 
 // ── INIT ─────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', function() {
-  cargarStorage();
+document.addEventListener('DOMContentLoaded', async function() {
+  await cargarStorage();
   renderAll();
 });
 </script>
