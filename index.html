@@ -63,6 +63,8 @@ input.c.wh{color:#fff}
 .blk{border:1px solid #ccc;margin-bottom:10px;background:#fff}
 .blkhdr{background:#d9e1f2;font-weight:700;padding:3px 8px;font-size:11px;border-bottom:1px solid #ccc;display:flex;gap:12px;align-items:center}
 .feriado{background:#FFE0E0!important}
+.sel-tipo{border:1px solid #bbb;border-radius:2px;font-size:10px;font-family:Calibri,Arial,sans-serif;padding:1px 2px;background:#fff;cursor:pointer;width:80px}
+.tipo-D{background:#FFF3CD!important}.tipo-S{background:#D4EDDA!important}.tipo-Q{background:#CCE5FF!important}
 .autosave{position:fixed;bottom:8px;right:12px;background:#333;color:#fff;font-size:10px;padding:3px 8px;border-radius:3px;display:none;z-index:300}
 /* Controles fecha/periodo */
 .period-ctrl{display:flex;align-items:center;gap:4px}
@@ -504,7 +506,7 @@ function renderSueldo(shId, titulo) {
       oninput="onInp(this)" onchange="onInp(this)">
   </div>
   <table><thead><tr>
-    <th>Panel</th><th>Personal</th><th>Sueldo $</th><th>Turno</th>`;
+    <th>Panel</th><th>Personal</th><th>Tipo Pago</th><th>Turno</th>`;
   DIAS_CORTO.forEach(d => h += `<th>${d}</th>`);
   h += `<th style="background:#d9e1f2">Propina</th>
     <th style="background:#e6ffe6">Total</th>
@@ -520,9 +522,14 @@ function renderSueldo(shId, titulo) {
         <td><input class="c lft" id="${shId}_p${pi}_r${ri}_nom"
           value="${g(shId+'_p'+pi+'_r'+ri+'_nom') || per.n}"
           oninput="onInp(this)" onchange="onInp(this)" style="min-width:70px"></td>
-        <td><input class="c" id="${shId}_p${pi}_r${ri}_sue"
-          value="${g(shId+'_p'+pi+'_r'+ri+'_sue') || 35000}"
-          oninput="onInp(this)" onchange="onInp(this)" style="width:70px"></td>
+        <td style="text-align:center">
+          <select class="sel-tipo" id="${shId}_p${pi}_r${ri}_tipo"
+            onchange="onInp(this);colorTipo(this)">
+            <option value="D" ${(g(shId+'_p'+pi+'_r'+ri+'_tipo')||'D')==='D'?'selected':''}>Diario</option>
+            <option value="S" ${(g(shId+'_p'+pi+'_r'+ri+'_tipo')||'D')==='S'?'selected':''}>Semana</option>
+            <option value="Q" ${(g(shId+'_p'+pi+'_r'+ri+'_tipo')||'D')==='Q'?'selected':''}>Quincena</option>
+          </select>
+        </td>
         <td style="text-align:center">${per.t}</td>`;
       for (let d=0; d<7; d++) {
         h += `<td>${inp(`${shId}_p${pi}_r${ri}_d${d}`)}</td>`;
@@ -562,6 +569,7 @@ function renderSueldo(shId, titulo) {
 
   el.innerHTML = h;
   recalcSueldo(shId);
+  colorTiposAll();
 }
 
 // ── FIREBASE ─────────────────────────────────────────────────
@@ -818,6 +826,16 @@ function renderFrancos() {
   });
 
   el.innerHTML = h;
+}
+
+// Colorear select de tipo de sueldo
+function colorTipo(sel) {
+  sel.className = 'sel-tipo tipo-' + sel.value;
+}
+
+// Colorear todos los selects al renderizar
+function colorTiposAll() {
+  document.querySelectorAll('.sel-tipo').forEach(s => colorTipo(s));
 }
 
 // Colorear celda de franco si es reemplazante
