@@ -64,7 +64,7 @@ input.c.wh{color:#fff}
 .blkhdr{background:#d9e1f2;font-weight:700;padding:3px 8px;font-size:11px;border-bottom:1px solid #ccc;display:flex;gap:12px;align-items:center}
 .feriado{background:#FFE0E0!important}
 .sel-tipo{border:1px solid #bbb;border-radius:2px;font-size:10px;font-family:Calibri,Arial,sans-serif;padding:1px 2px;background:#fff;cursor:pointer;width:80px}
-.tipo-D{background:#FFF3CD!important}.tipo-S{background:#D4EDDA!important}.tipo-Q{background:#CCE5FF!important}
+.tipo-D{background:#FFF3CD!important}.tipo-S{background:#D4EDDA!important}.tipo-Q{background:#CCE5FF!important}.tipo-F{background:#E8D5F5!important}
 .autosave{position:fixed;bottom:8px;right:12px;background:#333;color:#fff;font-size:10px;padding:3px 8px;border-radius:3px;display:none;z-index:300}
 /* Controles fecha/periodo */
 .period-ctrl{display:flex;align-items:center;gap:4px}
@@ -529,6 +529,7 @@ function renderSueldo(shId, titulo) {
             <option value="D" ${(g(shId+'_p'+pi+'_r'+ri+'_tipo')||'D')==='D'?'selected':''}>Diario</option>
             <option value="S" ${(g(shId+'_p'+pi+'_r'+ri+'_tipo')||'D')==='S'?'selected':''}>Semana</option>
             <option value="Q" ${(g(shId+'_p'+pi+'_r'+ri+'_tipo')||'D')==='Q'?'selected':''}>Quincena</option>
+            <option value="F" ${(g(shId+'_p'+pi+'_r'+ri+'_tipo')||'D')==='F'?'selected':''}>Franqueros</option>
           </select>
         </td>
         <td style="text-align:center">${per.t}</td>`;
