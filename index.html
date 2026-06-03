@@ -72,6 +72,11 @@ input.c.wh{color:#fff}
 .feriado{background:#FFE0E0!important}
 .sel-tipo{border:1px solid #bbb;border-radius:2px;font-size:10px;font-family:Calibri,Arial,sans-serif;padding:1px 2px;background:#fff;cursor:pointer;width:80px}
 .tipo-D{background:#FFF3CD!important}.tipo-S{background:#D4EDDA!important}.tipo-Q{background:#CCE5FF!important}.tipo-F{background:#E8D5F5!important}
+.obs-btn{background:none;border:none;cursor:pointer;font-size:12px;padding:0 3px;color:#555;vertical-align:middle}
+.obs-btn:hover{color:#1f3864}
+.obs-wrap{display:none;margin-top:2px}
+.obs-wrap.open{display:block}
+.obs-input{width:100%;font-size:10px;font-family:Calibri,Arial,sans-serif;border:1px solid #aaa;border-radius:2px;padding:2px 4px;background:#fffde7;resize:none;height:36px}
 .autosave{position:fixed;bottom:8px;right:12px;background:#333;color:#fff;font-size:10px;padding:3px 8px;border-radius:3px;display:none;z-index:300}
 /* Controles fecha/periodo */
 .period-ctrl{display:flex;align-items:center;gap:4px}
@@ -428,10 +433,36 @@ function renderSemana(shId, titulo) {
         <td class="calc-r" id="${dk}_totT"></td>
         <td class="calc-r" id="${dk}_totN"></td>
       </tr>
-      <tr><td></td><td style="font-weight:700">Lezcano Retiro</td>
-        <td>${inp(`${dk}_retL`)}</td><td></td><td></td></tr>
-      <tr><td></td><td style="font-weight:700">Martin Retiro</td>
-        <td>${inp(`${dk}_retM`)}</td><td></td><td></td></tr>
+      <tr>
+        <td></td><td style="font-weight:700">Lezcano Retiro</td>
+        <td>
+          ${inp(`${dk}_retL`)}
+          <div class="obs-wrap" id="${dk}_retL_obsWrap">
+            <textarea class="obs-input" id="${dk}_retL_obs"
+              placeholder="Observación..."
+              oninput="onInp(this)">${g(`${dk}_retL_obs`)}</textarea>
+          </div>
+        </td>
+        <td style="text-align:center">
+          <button class="obs-btn" onclick="toggleObs('${dk}_retL_obsWrap')" title="Observación">📝</button>
+        </td>
+        <td></td>
+      </tr>
+      <tr>
+        <td></td><td style="font-weight:700">Martin Retiro</td>
+        <td>
+          ${inp(`${dk}_retM`)}
+          <div class="obs-wrap" id="${dk}_retM_obsWrap">
+            <textarea class="obs-input" id="${dk}_retM_obs"
+              placeholder="Observación..."
+              oninput="onInp(this)">${g(`${dk}_retM_obs`)}</textarea>
+          </div>
+        </td>
+        <td style="text-align:center">
+          <button class="obs-btn" onclick="toggleObs('${dk}_retM_obsWrap')" title="Observación">📝</button>
+        </td>
+        <td></td>
+      </tr>
       <tr><td></td><td style="font-weight:700">Pagos Fichas</td>
         <td>${inp(`${dk}_pagF`)}</td><td></td><td></td></tr>
       <tr style="background:#e8f4e8"><td></td><td style="font-weight:700">banco</td>
@@ -845,6 +876,12 @@ function renderFrancos() {
   });
 
   el.innerHTML = h;
+}
+
+// Toggle observación
+function toggleObs(wrapId) {
+  const el = document.getElementById(wrapId);
+  if (el) el.classList.toggle('open');
 }
 
 // Colorear select de tipo de sueldo
