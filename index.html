@@ -923,10 +923,7 @@ function saveObs() {
 
 // Cerrar modal con Escape
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeObsModal(); });
-// Cerrar modal clicking overlay
-document.getElementById('obsOverlay').addEventListener('click', function(e) {
-  if(e.target === this) closeObsModal();
-});
+
 
 // Colorear select de tipo de sueldo
 function colorTipo(sel) {
@@ -965,9 +962,20 @@ function renderAll() {
 
 // ── INIT ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async function() {
+  const ov = document.getElementById('obsOverlay');
+  if (ov) ov.addEventListener('click', function(e){ if(e.target===this) closeObsModal(); });
   await cargarStorage();
   renderAll();
 });
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(() => console.log('SW registrado'))
+      .catch(e => console.warn('SW error:', e));
+  });
+}
 </script>
 <!-- Modal observaciones -->
 <div class="obs-overlay" id="obsOverlay">
@@ -986,14 +994,5 @@ document.addEventListener('DOMContentLoaded', async function() {
   </div>
 </div>
 
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(() => console.log('SW registrado'))
-      .catch(e => console.warn('SW error:', e));
-  });
-}
-</script>
 </body>
 </html>
