@@ -591,10 +591,10 @@ function renderSueldo(shId, titulo) {
     <th>Sem 1</th><th>Sem 2</th><th>Sem 3</th><th>Sem 4</th>
   </tr></thead><tbody>`;
 
-  ['Gustavo','Jazmin','Joha','Emi'].forEach((nom,gi) => {
+  ['Gustavo','Jazmin','Emi'].forEach((nom,gi) => {
     h += `<tr>
-      <td><input class="c lft" id="${shId}_g${gi}_nom" value="${g(shId+'_g'+gi+'_nom')||nom}"
-        oninput="onInp(this)" style="min-width:70px"></td>
+      <td><input class="c lft" id="${shId}_g${gi}_nom" value="${nom}"
+        style="min-width:70px;background:#f5f5f5" readonly></td>
       <td>${inp(`${shId}_g${gi}_base`)}</td>
       <td>${inp(`${shId}_g${gi}_q`)}</td>
       <td>${inp(`${shId}_g${gi}_sem`)}</td>
