@@ -969,12 +969,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 </script>
 <script>
+// Desregistrar service worker si existe
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(() => console.log('SW registrado'))
-      .catch(e => console.warn('SW error:', e));
-  });
+  navigator.serviceWorker.getRegistrations().then(r => r.forEach(sw => sw.unregister()));
 }
 </script>
 <!-- Modal observaciones -->
