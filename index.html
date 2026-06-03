@@ -450,7 +450,7 @@ function renderSemana(shId, titulo) {
         <td></td><td style="font-weight:700">Lezcano Retiro</td>
         <td>${inp(`${dk}_retL`)}</td>
         <td style="text-align:center">
-          <button class="obs-btn" onclick="openObsModal('${dk}_retL_obs', 'Lezcano Retiro')" title="Observación">📝</button>
+          <button class="obs-btn" data-key="${dk}_retL_obs" data-titulo="Lezcano Retiro" onclick="obsClick(this)" title="Observación">📝</button>
           <span class="obs-preview" id="${dk}_retL_obs_prev"></span>
         </td>
         <td></td>
@@ -459,7 +459,7 @@ function renderSemana(shId, titulo) {
         <td></td><td style="font-weight:700">Martin Retiro</td>
         <td>${inp(`${dk}_retM`)}</td>
         <td style="text-align:center">
-          <button class="obs-btn" onclick="openObsModal('${dk}_retM_obs', 'Martin Retiro')" title="Observación">📝</button>
+          <button class="obs-btn" data-key="${dk}_retM_obs" data-titulo="Martin Retiro" onclick="obsClick(this)" title="Observación">📝</button>
           <span class="obs-preview" id="${dk}_retM_obs_prev"></span>
         </td>
         <td></td>
@@ -891,6 +891,10 @@ function renderFrancos() {
 
 // Modal observaciones
 let _obsCurrentKey = null;
+
+function obsClick(btn) {
+  openObsModal(btn.dataset.key, btn.dataset.titulo);
+}
 
 function openObsModal(dataKey, titulo) {
   _obsCurrentKey = dataKey;
