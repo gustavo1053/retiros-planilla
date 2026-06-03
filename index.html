@@ -72,11 +72,24 @@ input.c.wh{color:#fff}
 .feriado{background:#FFE0E0!important}
 .sel-tipo{border:1px solid #bbb;border-radius:2px;font-size:10px;font-family:Calibri,Arial,sans-serif;padding:1px 2px;background:#fff;cursor:pointer;width:80px}
 .tipo-D{background:#FFF3CD!important}.tipo-S{background:#D4EDDA!important}.tipo-Q{background:#CCE5FF!important}.tipo-F{background:#E8D5F5!important}
-.obs-btn{background:none;border:none;cursor:pointer;font-size:12px;padding:0 3px;color:#555;vertical-align:middle}
-.obs-btn:hover{color:#1f3864}
-.obs-wrap{display:none;margin-top:2px}
-.obs-wrap.open{display:block}
-.obs-input{width:100%;font-size:10px;font-family:Calibri,Arial,sans-serif;border:1px solid #aaa;border-radius:2px;padding:2px 4px;background:#fffde7;resize:none;height:36px}
+.obs-btn{background:none;border:none;cursor:pointer;font-size:13px;padding:0 4px;color:#1f3864;vertical-align:middle}
+.obs-btn:hover{color:#c55a11;transform:scale(1.2)}
+/* Modal overlay */
+.obs-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center}
+.obs-overlay.open{display:flex}
+.obs-modal{background:#fff;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,0.3);width:480px;max-width:95vw;overflow:hidden}
+.obs-modal-hdr{background:#1f3864;color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:12px}
+.obs-modal-close{background:none;border:none;color:#fff;font-size:18px;cursor:pointer;padding:0 4px;line-height:1}
+.obs-modal-close:hover{color:#f5a623}
+.obs-modal-body{padding:14px}
+.obs-textarea{width:100%;height:160px;font-size:12px;font-family:Calibri,Arial,sans-serif;border:1px solid #bbb;border-radius:4px;padding:8px;background:#fffde7;resize:vertical;outline:none;line-height:1.5}
+.obs-textarea:focus{border-color:#1f3864;background:#fffdf0}
+.obs-modal-footer{padding:8px 14px;background:#f5f5f5;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid #ddd}
+.obs-ok{background:#00b050;color:#fff;border:none;padding:5px 16px;border-radius:3px;font-weight:700;cursor:pointer;font-size:11px}
+.obs-ok:hover{background:#008040}
+.obs-cancel{background:#aaa;color:#fff;border:none;padding:5px 12px;border-radius:3px;cursor:pointer;font-size:11px}
+.obs-cancel:hover{background:#888}
+.obs-preview{font-size:10px;color:#555;font-style:italic;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle}
 .autosave{position:fixed;bottom:8px;right:12px;background:#333;color:#fff;font-size:10px;padding:3px 8px;border-radius:3px;display:none;z-index:300}
 /* Controles fecha/periodo */
 .period-ctrl{display:flex;align-items:center;gap:4px}
@@ -435,31 +448,19 @@ function renderSemana(shId, titulo) {
       </tr>
       <tr>
         <td></td><td style="font-weight:700">Lezcano Retiro</td>
-        <td>
-          ${inp(`${dk}_retL`)}
-          <div class="obs-wrap" id="${dk}_retL_obsWrap">
-            <textarea class="obs-input" id="${dk}_retL_obs"
-              placeholder="Observación..."
-              oninput="onInp(this)">${g(`${dk}_retL_obs`)}</textarea>
-          </div>
-        </td>
+        <td>${inp(`${dk}_retL`)}</td>
         <td style="text-align:center">
-          <button class="obs-btn" onclick="toggleObs('${dk}_retL_obsWrap')" title="Observación">📝</button>
+          <button class="obs-btn" onclick="openObsModal('${dk}_retL_obs','Lezcano Retiro — ${d===0?DIAS_NOMBRE[0]:DIAS_NOMBRE[d]}')" title="Observación">📝</button>
+          <span class="obs-preview" id="${dk}_retL_obs_prev">${g(`${dk}_retL_obs`)?'💬 '+g(`${dk}_retL_obs`).substring(0,30):''}</span>
         </td>
         <td></td>
       </tr>
       <tr>
         <td></td><td style="font-weight:700">Martin Retiro</td>
-        <td>
-          ${inp(`${dk}_retM`)}
-          <div class="obs-wrap" id="${dk}_retM_obsWrap">
-            <textarea class="obs-input" id="${dk}_retM_obs"
-              placeholder="Observación..."
-              oninput="onInp(this)">${g(`${dk}_retM_obs`)}</textarea>
-          </div>
-        </td>
+        <td>${inp(`${dk}_retM`)}</td>
         <td style="text-align:center">
-          <button class="obs-btn" onclick="toggleObs('${dk}_retM_obsWrap')" title="Observación">📝</button>
+          <button class="obs-btn" onclick="openObsModal('${dk}_retM_obs','Martin Retiro — ${d===0?DIAS_NOMBRE[0]:DIAS_NOMBRE[d]}')" title="Observación">📝</button>
+          <span class="obs-preview" id="${dk}_retM_obs_prev">${g(`${dk}_retM_obs`)?'💬 '+g(`${dk}_retM_obs`).substring(0,30):''}</span>
         </td>
         <td></td>
       </tr>
@@ -878,11 +879,40 @@ function renderFrancos() {
   el.innerHTML = h;
 }
 
-// Toggle observación
-function toggleObs(wrapId) {
-  const el = document.getElementById(wrapId);
-  if (el) el.classList.toggle('open');
+// Modal observaciones
+let _obsCurrentKey = null;
+
+function openObsModal(dataKey, titulo) {
+  _obsCurrentKey = dataKey;
+  const val = g(dataKey) || '';
+  document.getElementById('obsTextarea').value = val;
+  document.getElementById('obsModalTitle').textContent = '📝 ' + titulo;
+  document.getElementById('obsOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('obsTextarea').focus(), 100);
 }
+
+function closeObsModal() {
+  document.getElementById('obsOverlay').classList.remove('open');
+  _obsCurrentKey = null;
+}
+
+function saveObs() {
+  if (!_obsCurrentKey) return;
+  const val = document.getElementById('obsTextarea').value;
+  s(_obsCurrentKey, val);
+  // Actualizar preview
+  const prevEl = document.getElementById(_obsCurrentKey + '_prev');
+  if (prevEl) prevEl.textContent = val ? '💬 ' + val.substring(0,30) + (val.length>30?'...':'') : '';
+  autoSave();
+  closeObsModal();
+}
+
+// Cerrar modal con Escape
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeObsModal(); });
+// Cerrar modal clicking overlay
+document.getElementById('obsOverlay').addEventListener('click', function(e) {
+  if(e.target === this) closeObsModal();
+});
 
 // Colorear select de tipo de sueldo
 function colorTipo(sel) {
@@ -925,6 +955,23 @@ document.addEventListener('DOMContentLoaded', async function() {
   renderAll();
 });
 </script>
+<!-- Modal observaciones -->
+<div class="obs-overlay" id="obsOverlay">
+  <div class="obs-modal">
+    <div class="obs-modal-hdr">
+      <span id="obsModalTitle">📝 Observación</span>
+      <button class="obs-modal-close" onclick="closeObsModal()">✕</button>
+    </div>
+    <div class="obs-modal-body">
+      <textarea class="obs-textarea" id="obsTextarea" placeholder="Escribí la observación acá..."></textarea>
+    </div>
+    <div class="obs-modal-footer">
+      <button class="obs-cancel" onclick="closeObsModal()">Cancelar</button>
+      <button class="obs-ok" onclick="saveObs()">✓ Guardar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
