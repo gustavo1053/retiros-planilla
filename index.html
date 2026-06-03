@@ -450,8 +450,8 @@ function renderSemana(shId, titulo) {
         <td></td><td style="font-weight:700">Lezcano Retiro</td>
         <td>${inp(`${dk}_retL`)}</td>
         <td style="text-align:center">
-          <button class="obs-btn" onclick="openObsModal('${dk}_retL_obs','Lezcano Retiro — ${d===0?DIAS_NOMBRE[0]:DIAS_NOMBRE[d]}')" title="Observación">📝</button>
-          <span class="obs-preview" id="${dk}_retL_obs_prev">${g(`${dk}_retL_obs`)?'💬 '+g(`${dk}_retL_obs`).substring(0,30):''}</span>
+          <button class="obs-btn" onclick="openObsModal('${dk}_retL_obs', 'Lezcano Retiro')" title="Observación">📝</button>
+          <span class="obs-preview" id="${dk}_retL_obs_prev"></span>
         </td>
         <td></td>
       </tr>
@@ -459,8 +459,8 @@ function renderSemana(shId, titulo) {
         <td></td><td style="font-weight:700">Martin Retiro</td>
         <td>${inp(`${dk}_retM`)}</td>
         <td style="text-align:center">
-          <button class="obs-btn" onclick="openObsModal('${dk}_retM_obs','Martin Retiro — ${d===0?DIAS_NOMBRE[0]:DIAS_NOMBRE[d]}')" title="Observación">📝</button>
-          <span class="obs-preview" id="${dk}_retM_obs_prev">${g(`${dk}_retM_obs`)?'💬 '+g(`${dk}_retM_obs`).substring(0,30):''}</span>
+          <button class="obs-btn" onclick="openObsModal('${dk}_retM_obs', 'Martin Retiro')" title="Observación">📝</button>
+          <span class="obs-preview" id="${dk}_retM_obs_prev"></span>
         </td>
         <td></td>
       </tr>
@@ -497,6 +497,16 @@ function renderSemana(shId, titulo) {
   // Recalcular todo
   for (let d=0; d<7; d++) recalcDia(shId, d);
   recalcSemRes(shId);
+  // Inicializar previews de observaciones
+  for (let d=0; d<7; d++) {
+    const dk = `${shId}_d${d}`;
+    ['retL','retM'].forEach(tipo => {
+      const key = `${dk}_${tipo}_obs`;
+      const val = g(key);
+      const el = document.getElementById(`${key}_prev`);
+      if (el && val) el.textContent = '💬 ' + val.substring(0,30) + (val.length>30?'...':'');
+    });
+  }
 }
 
 // ── RENDER CARGAS ────────────────────────────────────────────
