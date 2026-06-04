@@ -91,6 +91,17 @@ input.c.wh{color:#fff}
 .obs-cancel:hover{background:#888}
 .obs-preview{font-size:10px;color:#555;font-style:italic;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle}
 .autosave{position:fixed;bottom:8px;right:12px;background:#333;color:#fff;font-size:10px;padding:3px 8px;border-radius:3px;display:none;z-index:300}
+/* Productividad */
+.prod-score{display:inline-flex;align-items:center;gap:3px}
+.star{color:#ccc;font-size:14px;cursor:pointer;transition:color .1s}
+.star.on{color:#f5a623}
+.prod-total{font-weight:700;font-size:13px;color:#1f3864}
+.prod-premio{background:#00b050;color:#fff;font-weight:700;padding:2px 8px;border-radius:3px;font-size:11px}
+.prod-premio-0{background:#e0e0e0;color:#555}
+.prow-hdr{background:#1f3864;color:#fff;font-weight:700;font-size:11px}
+.semana-prod-sel{font-size:11px;padding:3px 8px;border:1px solid #bbb;border-radius:3px}
+.criterio-peso{font-size:9px;color:#888;display:block}
+input.premio-monto{width:100px;font-size:12px;padding:3px 6px;border:1px solid #bbb;border-radius:3px;text-align:right}
 /* Controles fecha/periodo */
 .period-ctrl{display:flex;align-items:center;gap:4px}
 .arr-btn{background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.4);border-radius:3px;width:20px;height:20px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;font-weight:700}
@@ -133,6 +144,7 @@ input.c.wh{color:#fff}
   <div class="stab" onclick="showSheet('sh_su4',this)">Sueldos 4</div>
   <div class="stab" onclick="showSheet('sh_dir',this)">Direcciones</div>
   <div class="stab" onclick="showSheet('sh_fra',this)">Francos</div>
+  <div class="stab" onclick="showSheet('sh_prod',this)">🏆 Productividad</div>
 </div>
 
 <div id="sh_s1"    class="sheet active"></div>
@@ -146,6 +158,7 @@ input.c.wh{color:#fff}
 <div id="sh_su4"   class="sheet"></div>
 <div id="sh_dir"   class="sheet"></div>
 <div id="sh_fra"   class="sheet"></div>
+<div id="sh_prod"  class="sheet"></div>
 
 <div class="autosave" id="asMsg">Guardando...</div>
 
@@ -957,6 +970,158 @@ function colorFranco(inp) {
   inp.style.color = es ? '#fff' : '#000';
 }
 
+// ── RENDER PRODUCTIVIDAD ─────────────────────────────────────
+const CRITERIOS = [
+  {key:'whatsapp',  label:'Tiempo respuesta WhatsApp', peso:25},
+  {key:'cordial',   label:'Cordialidad con usuarios',  peso:25},
+  {key:'errores',   label:'Sin errores (verificación)', peso:20},
+  {key:'puntual',   label:'Puntualidad en el ingreso', peso:20},
+  {key:'otros',     label:'Otros criterios',            peso:10},
+];
+const PESO_TOTAL = CRITERIOS.reduce((a,c)=>a+c.peso,0); // 100
+
+function renderProductividad() {
+  const el = document.getElementById('sh_prod');
+  if (!el) return;
+
+  const semanas = ['Semana 1','Semana 2','Semana 3','Semana 4'];
+  const montoKey = 'prod_monto_max';
+  const montoVal = g(montoKey) || '35000';
+
+  let h = `<div class="shdr" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+    <span>🏆 CONTROL DE PRODUCTIVIDAD — ${MES}</span>
+    <span style="font-size:11px;font-weight:400">Premio máximo por agente: $</span>
+    <input class="premio-monto" id="${montoKey}" value="${montoVal}"
+      oninput="onInp(this)" onchange="onInp(this)" placeholder="35000">
+    <span style="font-size:11px;font-weight:400">Semana:</span>
+    <select class="semana-prod-sel" id="prod_sem_sel" onchange="renderProductividad()">`;
+  semanas.forEach((s,i) => {
+    const sel = (g('prod_sem_sel')||'0') == String(i) ? 'selected' : '';
+    h += `<option value="${i}" ${sel}>${s}</option>`;
+  });
+  h += `</select></div>`;
+
+  // Tabla de criterios y pesos
+  h += `<div style="margin:10px 0 6px;font-size:11px;display:flex;gap:20px;flex-wrap:wrap;padding:6px 10px;background:#f5f5f5;border:1px solid #ddd;border-radius:4px">`;
+  CRITERIOS.forEach(c => {
+    h += `<span><b>${c.label}</b> — peso ${c.peso}%</span>`;
+  });
+  h += `</div>`;
+
+  // Tabla de evaluación
+  h += `<table style="min-width:900px"><thead><tr>
+    <th style="min-width:80px">Panel</th>
+    <th style="min-width:80px">Agente</th>
+    <th style="min-width:70px">Turno</th>`;
+  CRITERIOS.forEach(c => {
+    h += `<th style="min-width:110px">${c.label}<span class="criterio-peso">Peso ${c.peso}%</span></th>`;
+  });
+  h += `<th style="min-width:80px">Puntaje</th>
+    <th style="min-width:90px">Premio</th>
+    <th style="min-width:160px">Observación</th>
+  </tr></thead><tbody>`;
+
+  const si = g('prod_sem_sel') || '0';
+  const monto = parseFloat((montoVal+'').replace(/\./g,'').replace(',','.')) || 35000;
+
+  PANELES.forEach((panel, pi) => {
+    PERSONAL[pi].forEach((per, ri) => {
+      const base = `prod_${si}_p${pi}_r${ri}`;
+      let puntajeTotal = 0;
+
+      h += `<tr>
+        <td class="${PC[pi]}">${panel}</td>
+        <td style="font-weight:600">${per.n}</td>
+        <td style="text-align:center">${per.t}</td>`;
+
+      CRITERIOS.forEach(c => {
+        const key = `${base}_${c.key}`;
+        const val = parseInt(g(key)) || 0;
+        puntajeTotal += val * c.peso;
+        // Estrellas 1-5
+        let stars = '';
+        for (let s=1; s<=5; s++) {
+          stars += `<span class="star ${s<=val?'on':''}" 
+            data-key="${key}" data-val="${s}" 
+            onclick="setStar(this)">${s<=val?'★':'☆'}</span>`;
+        }
+        h += `<td style="text-align:center"><div class="prod-score">${stars}</div>
+          <div style="font-size:9px;color:#888">${val}/5</div></td>`;
+      });
+
+      const puntajeFinal = Math.round(puntajeTotal / (5 * PESO_TOTAL) * 100);
+      const premioAmt = Math.round(monto * puntajeFinal / 100);
+      const premioClass = premioAmt > 0 ? 'prod-premio' : 'prod-premio prod-premio-0';
+
+      h += `<td style="text-align:center">
+          <span class="prod-total" id="${base}_puntaje">${puntajeFinal}%</span>
+        </td>
+        <td style="text-align:center">
+          <span class="${premioClass}" id="${base}_premio">$${premioAmt.toLocaleString('es-AR')}</span>
+        </td>
+        <td>
+          <button class="obs-btn" data-key="${base}_obs" data-titulo="${per.n} — ${panel}" onclick="obsClick(this)" title="Observación">📝</button>
+          <span class="obs-preview" id="${base}_obs_prev">${g(base+'_obs')?'💬 '+g(base+'_obs').substring(0,25):''}</span>
+        </td>
+      </tr>`;
+    });
+  });
+
+  h += `</tbody></table>`;
+
+  // Resumen ranking
+  h += `<br><div class="shdr" style="background:#2e4a7a;font-size:11px">Ranking semana</div>
+  <table><thead><tr><th>#</th><th>Agente</th><th>Panel</th><th>Turno</th><th>Puntaje</th><th>Premio</th></tr></thead>
+  <tbody id="prod_ranking"></tbody></table>`;
+
+  el.innerHTML = h;
+  recalcProdRanking(si, monto);
+}
+
+function setStar(el) {
+  const key = el.dataset.key;
+  const val = parseInt(el.dataset.val);
+  // Toggle: si ya tiene ese valor, poner 0
+  const cur = parseInt(g(key)) || 0;
+  const newVal = cur === val ? 0 : val;
+  s(key, newVal);
+  autoSave();
+  // Re-render productividad
+  renderProductividad();
+}
+
+function recalcProdRanking(si, monto) {
+  const rows = [];
+  PANELES.forEach((panel, pi) => {
+    PERSONAL[pi].forEach((per, ri) => {
+      const base = `prod_${si}_p${pi}_r${ri}`;
+      let puntajeTotal = 0;
+      CRITERIOS.forEach(c => {
+        const val = parseInt(g(`${base}_${c.key}`)) || 0;
+        puntajeTotal += val * c.peso;
+      });
+      const puntajeFinal = Math.round(puntajeTotal / (5 * PESO_TOTAL) * 100);
+      const premioAmt = Math.round(monto * puntajeFinal / 100);
+      rows.push({nom: per.n, panel, turno: per.t, puntaje: puntajeFinal, premio: premioAmt});
+    });
+  });
+  rows.sort((a,b) => b.puntaje - a.puntaje);
+  const tb = document.getElementById('prod_ranking');
+  if (!tb) return;
+  tb.innerHTML = rows.map((r,i) => {
+    const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+    const pc = PC[PANELES.indexOf(r.panel)];
+    return `<tr>
+      <td style="text-align:center;font-weight:700">${medal||i+1}</td>
+      <td style="font-weight:600">${r.nom}</td>
+      <td class="${pc}">${r.panel}</td>
+      <td style="text-align:center">${r.turno}</td>
+      <td style="text-align:center;font-weight:700">${r.puntaje}%</td>
+      <td style="text-align:center"><span class="${r.premio>0?'prod-premio':'prod-premio prod-premio-0'}">$${r.premio.toLocaleString('es-AR')}</span></td>
+    </tr>`;
+  }).join('');
+}
+
 // ── RENDER ALL ───────────────────────────────────────────────
 function renderAll() {
   const mes = document.getElementById('mesSelect').value;
@@ -972,6 +1137,7 @@ function renderAll() {
   renderSueldo('sh_su4', `Sueldos Semana 4 — ${mes}`);
   renderDirecciones();
   renderFrancos();
+  renderProductividad();
 }
 
 // ── INIT ─────────────────────────────────────────────────────
