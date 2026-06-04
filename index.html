@@ -972,67 +972,50 @@ function colorFranco(inp) {
 
 // ── RENDER PRODUCTIVIDAD ─────────────────────────────────────
 const CRITERIOS = [
-  {key:'whatsapp', label:'Respuesta WhatsApp', icon:'brand-whatsapp'},
-  {key:'cordial',  label:'Cordialidad',        icon:'mood-smile'},
-  {key:'errores',  label:'Sin errores',         icon:'shield-check'},
-  {key:'puntual',  label:'Puntualidad',         icon:'clock-check'},
-  {key:'otros',    label:'Otros',               icon:'star'},
+  {key:'whatsapp', label:'WhatsApp'},
+  {key:'cordial',  label:'Cordialidad'},
+  {key:'errores',  label:'Sin errores'},
+  {key:'puntual',  label:'Puntualidad'},
+  {key:'otros',    label:'Otros'},
 ];
 
-const PROD_STYLE = `
-  .prod-wrap{font-family:system-ui,-apple-system,sans-serif;padding:0 2px}
-  .prod-header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px;background:#f8f8f8;border-radius:10px;margin-bottom:16px;border:0.5px solid #e8e8e8}
-  .prod-title{font-size:15px;font-weight:600;color:#111;letter-spacing:-.01em}
-  .prod-sub{font-size:12px;color:#888;margin-top:1px}
-  .prod-ctrl{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap}
-  .prod-ctrl label{font-size:12px;color:#888}
-  .prod-ctrl select,.prod-ctrl input{font-size:12px;padding:5px 9px;border:0.5px solid #ddd;border-radius:6px;background:#fff;color:#111;outline:none}
-  .prod-ctrl input{width:110px;text-align:right}
-  .prod-grid{display:flex;flex-direction:column;gap:8px}
-  .prod-row{display:grid;align-items:center;background:#fff;border:0.5px solid #ebebeb;border-radius:10px;padding:10px 14px;gap:10px}
-  .prod-row:hover{border-color:#ccc;background:#fafafa}
-  .prod-agent{display:flex;align-items:center;gap:10px;min-width:0}
-  .prod-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
-  .prod-name{font-size:13px;font-weight:600;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .prod-panel-badge{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;margin-top:2px;display:inline-block}
-  .prod-criterios{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-  .crit-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 8px;border-radius:8px;border:0.5px solid #e8e8e8;background:#fafafa;cursor:pointer;transition:all .12s;min-width:60px}
-  .crit-btn:hover{border-color:#bbb;background:#f0f0f0}
-  .crit-btn.has-note{border-color:#6366f1;background:#f0f0ff}
-  .crit-icon{font-size:16px;color:#888}
-  .crit-btn.has-note .crit-icon{color:#6366f1}
-  .crit-label{font-size:9px;color:#999;text-align:center;line-height:1.2}
-  .crit-btn.has-note .crit-label{color:#6366f1}
-  .prod-premio-wrap{display:flex;align-items:center;gap:8px;justify-content:flex-end}
-  .premio-check{width:18px;height:18px;accent-color:#6366f1;cursor:pointer}
-  .premio-badge{font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;white-space:nowrap}
-  .premio-on{background:#e8f5e9;color:#2e7d32}
-  .premio-off{background:#f5f5f5;color:#aaa}
-  .prod-ranking{margin-top:20px}
-  .rank-title{font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
-  .rank-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
-  .rank-card{background:#fff;border:0.5px solid #ebebeb;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px}
-  .rank-medal{font-size:20px;width:28px;text-align:center}
-  .rank-name{font-size:13px;font-weight:600;color:#111}
-  .rank-sub{font-size:11px;color:#888;margin-top:1px}
-  .rank-amt{font-size:13px;font-weight:600;color:#2e7d32;margin-left:auto}
-  .empty-rank{text-align:center;padding:20px;color:#bbb;font-size:13px}
-  .divider{height:0.5px;background:#ebebeb;margin:16px 0}
+const PROD_CSS = `
+  .pd{font-family:system-ui,-apple-system,sans-serif;padding:4px 0}
+  .pd-hdr{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px;padding-bottom:14px;border-bottom:2px solid #6366f1}
+  .pd-title{font-size:16px;font-weight:700;color:#111;letter-spacing:-.02em}
+  .pd-badge{background:#6366f1;color:#fff;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
+  .pd-sub{font-size:11px;color:#9ca3af}
+  .pd-ctrl{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .pd-ctrl label{font-size:11px;color:#9ca3af}
+  .pd-ctrl select,.pd-ctrl input{font-size:12px;padding:5px 9px;border:0.5px solid #e5e7eb;border-radius:6px;background:#fff;color:#111;outline:none}
+  .pd-ctrl input{width:110px;text-align:right}
+  .pd-tbl{width:100%;border-collapse:separate;border-spacing:0 4px;min-width:700px}
+  .pd-tbl th{font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;padding:0 10px 6px;text-align:center}
+  .pd-tbl th:first-child{text-align:left}
+  .pd-tbl td{padding:9px 10px;background:#fafafa;font-size:12px;text-align:center}
+  .pd-tbl td:first-child{border-radius:8px 0 0 8px;text-align:left}
+  .pd-tbl td:last-child{border-radius:0 8px 8px 0}
+  .pd-tbl tr:hover td{background:#f5f3ff}
+  .pd-name{font-weight:700;color:#111;font-size:13px}
+  .pd-info{font-size:10px;color:#9ca3af;margin-top:1px}
+  .pd-pill{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:3px;border:none;outline:none}
+  .pd-pill-blank{background:#f3f4f6;color:#9ca3af;border:1px solid #e5e7eb}
+  .pd-pill-blank:hover{background:#ede9fe;color:#6d28d9;border-color:#c4b5fd}
+  .pd-pill-done{background:#ede9fe;color:#6d28d9;border:1px solid #c4b5fd}
+  .pd-on{background:#d1fae5;color:#065f46;font-size:11px;font-weight:700;padding:4px 11px;border-radius:20px;white-space:nowrap}
+  .pd-off{background:#f3f4f6;color:#9ca3af;font-size:11px;padding:4px 11px;border-radius:20px;white-space:nowrap}
+  .pd-chk{width:15px;height:15px;accent-color:#6366f1;cursor:pointer;margin-right:4px;vertical-align:middle}
+  .pd-sep{height:0.5px;background:#e5e7eb;margin:16px 0}
+  .pd-rank-title{font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px}
+  .pd-rank-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
+  .pd-rank-card{background:#fff;border:0.5px solid #e5e7eb;border-radius:10px;padding:11px 14px;display:flex;align-items:center;gap:10px}
+  .pd-medal{font-size:18px;width:26px;text-align:center}
+  .pd-rname{font-size:13px;font-weight:700;color:#111}
+  .pd-rsub{font-size:10px;color:#9ca3af;margin-top:1px}
+  .pd-ramt{font-size:13px;font-weight:700;color:#065f46;margin-left:auto}
+  .pd-empty{text-align:center;padding:20px;color:#d1d5db;font-size:13px}
+  .pd-wrap-tbl{overflow-x:auto}
 `;
-
-// Colores por panel
-const PANEL_COLORS = {
-  'Age 18':{bg:'#fff9c4',tc:'#7c6200'},
-  'Age 19':{bg:'#ffe0b2',tc:'#7c3d00'},
-  'Age 21':{bg:'#ffcdd2',tc:'#7c1b1b'},
-  'Age 22':{bg:'#c8e6c9',tc:'#1b5e20'},
-  'Age 23':{bg:'#bbdefb',tc:'#0d47a1'},
-  'Age 24':{bg:'#e1bee7',tc:'#4a148c'},
-  'Age 25':{bg:'#b2ebf2',tc:'#004d5c'},
-  'Sm'    :{bg:'#f5f5f5',tc:'#424242'},
-};
-
-function initials(nom){return nom.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();}
 
 function renderProductividad() {
   const el = document.getElementById('sh_prod');
@@ -1042,113 +1025,102 @@ function renderProductividad() {
   const montoKey = 'prod_monto_max';
   const montoVal = g(montoKey) || '35000';
   const si = g('prod_sem_sel') || '0';
+  const monto = parseFloat((montoVal+'').replace(/\./g,'').replace(',','.')) || 35000;
 
-  let h = `<style>${PROD_STYLE}</style><div class="prod-wrap">`;
+  let h = `<style>${PROD_CSS}</style><div class="pd">`;
 
   // Header
-  h += `<div class="prod-header">
+  h += `<div class="pd-hdr">
     <div>
-      <div class="prod-title">Control de Productividad</div>
-      <div class="prod-sub">${MES}</div>
+      <div class="pd-title">Productividad</div>
     </div>
-    <div class="prod-ctrl">
+    <div class="pd-badge">${semanas[parseInt(si)]}</div>
+    <div class="pd-sub">${MES}</div>
+    <div class="pd-ctrl">
       <label>Semana</label>
       <select id="prod_sem_sel" onchange="onInp(this);renderProductividad()">`;
   semanas.forEach((sem,i) => h += `<option value="${i}" ${si==i?'selected':''}>${sem}</option>`);
   h += `</select>
       <label>Premio $</label>
-      <input id="${montoKey}" value="${montoVal}" oninput="onInp(this)" onchange="onInp(this)" placeholder="35000">
+      <input id="${montoKey}" value="${montoVal}" oninput="onInp(this)" onchange="onInp(this);renderProductividad()" placeholder="35000">
     </div>
   </div>`;
 
-  // Leyenda criterios
-  h += `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">`;
-  CRITERIOS.forEach(c => {
-    h += `<div style="display:flex;align-items:center;gap:4px;font-size:11px;color:#888">
-      <i class="ti ti-${c.icon}" style="font-size:13px" aria-hidden="true"></i>${c.label}
-    </div>`;
-  });
-  h += `</div>`;
-
-  // Filas de agentes
-  const gridCols = `grid-template-columns: 180px 1fr auto`;
-  h += `<div class="prod-grid">`;
+  // Tabla
+  h += `<div class="pd-wrap-tbl"><table class="pd-tbl"><thead><tr>
+    <th>Agente</th>`;
+  CRITERIOS.forEach(c => h += `<th>${c.label}</th>`);
+  h += `<th>Premio</th></tr></thead><tbody>`;
 
   PANELES.forEach((panel, pi) => {
-    const col = PANEL_COLORS[panel] || {bg:'#f5f5f5',tc:'#444'};
     PERSONAL[pi].forEach((per, ri) => {
       const base = `prod_${si}_p${pi}_r${ri}`;
       const tieneP = g(`${base}_premio_otorgado`) === '1';
-      const monto = parseFloat((montoVal+'').replace(/\./g,'').replace(',','.')) || 35000;
-      const ini = initials(per.n);
 
-      h += `<div class="prod-row" style="${gridCols}">
-        <div class="prod-agent">
-          <div class="prod-avatar" style="background:${col.bg};color:${col.tc}">${ini}</div>
-          <div>
-            <div class="prod-name">${per.n}</div>
-            <span class="prod-panel-badge" style="background:${col.bg};color:${col.tc}">${panel} · ${per.t}</span>
-          </div>
-        </div>
-        <div class="prod-criterios">`;
+      h += `<tr>
+        <td>
+          <div class="pd-name">${per.n}</div>
+          <div class="pd-info">${panel} · ${per.t}</div>
+        </td>`;
 
       CRITERIOS.forEach(c => {
         const key = `${base}_${c.key}`;
         const tieneNota = !!g(key);
-        h += `<button class="crit-btn ${tieneNota?'has-note':''}" 
+        h += `<td>
+          <button class="pd-pill ${tieneNota?'pd-pill-done':'pd-pill-blank'}"
             data-key="${key}" data-titulo="${c.label} — ${per.n}"
-            onclick="obsClick(this)" title="${c.label}">
-          <i class="ti ti-${c.icon} crit-icon" aria-hidden="true"></i>
-          <span class="crit-label">${c.label}</span>
-        </button>`;
+            onclick="obsClick(this)">
+            ${tieneNota ? '✓ Nota' : '+ Nota'}
+          </button>
+        </td>`;
       });
 
-      h += `</div>
-        <div class="prod-premio-wrap">
-          <input type="checkbox" class="premio-check" id="${base}_premio_otorgado" ${tieneP?'checked':''}
+      h += `<td>
+        <label style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">
+          <input type="checkbox" class="pd-chk" id="${base}_premio_otorgado"
+            ${tieneP?'checked':''}
             onchange="s(this.id,this.checked?'1':'0');autoSave();renderProductividad()">
-          <span class="premio-badge ${tieneP?'premio-on':'premio-off'}">
+          <span class="${tieneP?'pd-on':'pd-off'}">
             ${tieneP ? '$'+Math.round(monto).toLocaleString('es-AR') : 'Sin premio'}
           </span>
-        </div>
-      </div>`;
+        </label>
+      </td></tr>`;
     });
   });
 
-  h += `</div>`;
+  h += `</tbody></table></div>`;
 
   // Ranking
-  const monto = parseFloat((montoVal+'').replace(/\./g,'').replace(',','.')) || 35000;
   const ganadores = [];
   PANELES.forEach((panel,pi) => {
     PERSONAL[pi].forEach((per,ri) => {
-      const base = `prod_${si}_p${pi}_r${ri}`;
-      if (g(`${base}_premio_otorgado`) === '1') ganadores.push({nom:per.n, panel, t:per.t, pi});
+      if (g(`prod_${si}_p${pi}_r${ri}_premio_otorgado`) === '1')
+        ganadores.push({nom:per.n, panel, t:per.t});
     });
   });
 
-  h += `<div class="divider"></div><div class="prod-ranking">
-    <div class="rank-title">Agentes con premio — ${semanas[si]}</div>`;
+  h += `<div class="pd-sep"></div>
+  <div class="pd-rank-title">Agentes con premio · ${semanas[parseInt(si)]}</div>`;
+
   if (ganadores.length === 0) {
-    h += `<div class="empty-rank">Ningún agente seleccionado aún</div>`;
+    h += `<div class="pd-empty">Ningún agente seleccionado aún</div>`;
   } else {
     const medals = ['🥇','🥈','🥉'];
-    h += `<div class="rank-grid">`;
-    ganadores.forEach((g2,i) => {
-      const col = PANEL_COLORS[g2.panel] || {bg:'#f5f5f5',tc:'#444'};
-      h += `<div class="rank-card">
-        <div class="rank-medal">${medals[i]||'🏅'}</div>
-        <div style="min-width:0">
-          <div class="rank-name">${g2.nom}</div>
-          <div class="rank-sub">${g2.panel} · ${g2.t}</div>
+    h += `<div class="pd-rank-grid">`;
+    ganadores.forEach((gn,i) => {
+      h += `<div class="pd-rank-card">
+        <div class="pd-medal">${medals[i]||'🏅'}</div>
+        <div>
+          <div class="pd-rname">${gn.nom}</div>
+          <div class="pd-rsub">${gn.panel} · ${gn.t}</div>
         </div>
-        <div class="rank-amt">$${Math.round(monto).toLocaleString('es-AR')}</div>
+        <div class="pd-ramt">$${Math.round(monto).toLocaleString('es-AR')}</div>
       </div>`;
     });
     h += `</div>`;
   }
-  h += `</div></div>`;
 
+  h += `</div>`;
   el.innerHTML = h;
 }
 
