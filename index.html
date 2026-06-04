@@ -479,8 +479,15 @@ function renderSemana(shId, titulo) {
         </td>
         <td></td>
       </tr>
-      <tr><td></td><td style="font-weight:700">Compra Us$</td>
-        <td>${inp(`${dk}_usd`)}</td><td></td><td></td></tr>
+      <tr>
+        <td></td><td style="font-weight:700">Compra Us$</td>
+        <td>${inp(`${dk}_usd`)}</td>
+        <td style="text-align:center">
+          <button class="obs-btn" data-key="${dk}_usd_obs" data-titulo="Compra Us$" onclick="obsClick(this)" title="Observación">📝</button>
+          <span class="obs-preview" id="${dk}_usd_obs_prev"></span>
+        </td>
+        <td></td>
+      </tr>
       <tr class="rojo"><td></td><td>Sub Total</td>
         <td class="calc-r" id="${dk}_sub"></td><td></td><td></td></tr>
       </tbody></table></div>`;
@@ -507,7 +514,7 @@ function renderSemana(shId, titulo) {
   // Inicializar previews de observaciones
   for (let d=0; d<7; d++) {
     const dk = `${shId}_d${d}`;
-    ['retL','retM','gasto'].forEach(tipo => {
+    ['retL','retM','gasto','usd'].forEach(tipo => {
       const key = `${dk}_${tipo}_obs`;
       const val = g(key);
       const el = document.getElementById(`${key}_prev`);
