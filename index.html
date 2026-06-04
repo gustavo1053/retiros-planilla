@@ -972,49 +972,60 @@ function colorFranco(inp) {
 
 // ── RENDER PRODUCTIVIDAD ─────────────────────────────────────
 const CRITERIOS = [
-  {key:'whatsapp', label:'WhatsApp'},
+  {key:'whatsapp', label:'Respuesta WhatsApp'},
   {key:'cordial',  label:'Cordialidad'},
   {key:'errores',  label:'Sin errores'},
   {key:'puntual',  label:'Puntualidad'},
   {key:'otros',    label:'Otros'},
 ];
 
+const PANEL_COL = {
+  'Age 18':{bg:'#fff9c4',tc:'#7c6200'},
+  'Age 19':{bg:'#ffe0b2',tc:'#7c3d00'},
+  'Age 21':{bg:'#ffcdd2',tc:'#7c1b1b'},
+  'Age 22':{bg:'#c8e6c9',tc:'#1b5e20'},
+  'Age 23':{bg:'#bbdefb',tc:'#0d47a1'},
+  'Age 24':{bg:'#e1bee7',tc:'#4a148c'},
+  'Age 25':{bg:'#b2ebf2',tc:'#004d5c'},
+  'Sm'    :{bg:'#f5f5f5',tc:'#424242'},
+};
+
 const PROD_CSS = `
-  .pd{font-family:system-ui,-apple-system,sans-serif;padding:4px 0}
-  .pd-hdr{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px;padding-bottom:14px;border-bottom:2px solid #6366f1}
-  .pd-title{font-size:16px;font-weight:700;color:#111;letter-spacing:-.02em}
-  .pd-badge{background:#6366f1;color:#fff;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
-  .pd-sub{font-size:11px;color:#9ca3af}
-  .pd-ctrl{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .pd-ctrl label{font-size:11px;color:#9ca3af}
-  .pd-ctrl select,.pd-ctrl input{font-size:12px;padding:5px 9px;border:0.5px solid #e5e7eb;border-radius:6px;background:#fff;color:#111;outline:none}
-  .pd-ctrl input{width:110px;text-align:right}
-  .pd-tbl{width:100%;border-collapse:separate;border-spacing:0 4px;min-width:700px}
-  .pd-tbl th{font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;padding:0 10px 6px;text-align:center}
-  .pd-tbl th:first-child{text-align:left}
-  .pd-tbl td{padding:9px 10px;background:#fafafa;font-size:12px;text-align:center}
-  .pd-tbl td:first-child{border-radius:8px 0 0 8px;text-align:left}
-  .pd-tbl td:last-child{border-radius:0 8px 8px 0}
-  .pd-tbl tr:hover td{background:#f5f3ff}
-  .pd-name{font-weight:700;color:#111;font-size:13px}
-  .pd-info{font-size:10px;color:#9ca3af;margin-top:1px}
-  .pd-pill{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:3px;border:none;outline:none}
-  .pd-pill-blank{background:#f3f4f6;color:#9ca3af;border:1px solid #e5e7eb}
-  .pd-pill-blank:hover{background:#ede9fe;color:#6d28d9;border-color:#c4b5fd}
-  .pd-pill-done{background:#ede9fe;color:#6d28d9;border:1px solid #c4b5fd}
-  .pd-on{background:#d1fae5;color:#065f46;font-size:11px;font-weight:700;padding:4px 11px;border-radius:20px;white-space:nowrap}
-  .pd-off{background:#f3f4f6;color:#9ca3af;font-size:11px;padding:4px 11px;border-radius:20px;white-space:nowrap}
-  .pd-chk{width:15px;height:15px;accent-color:#6366f1;cursor:pointer;margin-right:4px;vertical-align:middle}
-  .pd-sep{height:0.5px;background:#e5e7eb;margin:16px 0}
-  .pd-rank-title{font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px}
-  .pd-rank-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
-  .pd-rank-card{background:#fff;border:0.5px solid #e5e7eb;border-radius:10px;padding:11px 14px;display:flex;align-items:center;gap:10px}
-  .pd-medal{font-size:18px;width:26px;text-align:center}
-  .pd-rname{font-size:13px;font-weight:700;color:#111}
-  .pd-rsub{font-size:10px;color:#9ca3af;margin-top:1px}
-  .pd-ramt{font-size:13px;font-weight:700;color:#065f46;margin-left:auto}
-  .pd-empty{text-align:center;padding:20px;color:#d1d5db;font-size:13px}
-  .pd-wrap-tbl{overflow-x:auto}
+  .kb{font-family:system-ui,-apple-system,sans-serif;padding:4px 0}
+  .kb-hdr{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+  .kb-title{font-size:15px;font-weight:700;color:#172b4d;letter-spacing:-.01em}
+  .kb-sub{font-size:11px;color:#5e6c84}
+  .kb-ctrl{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .kb-ctrl label{font-size:11px;color:#5e6c84}
+  .kb-ctrl select,.kb-ctrl input{font-size:12px;padding:5px 9px;border:1px solid #dfe1e6;border-radius:4px;background:#fff;color:#172b4d;outline:none}
+  .kb-ctrl input{width:110px;text-align:right}
+  .kb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+  .kb-card{background:#fff;border-radius:8px;padding:13px;box-shadow:0 1px 3px rgba(9,30,66,.12),0 0 1px rgba(9,30,66,.08);display:flex;flex-direction:column;gap:10px}
+  .kb-card-top{display:flex;align-items:flex-start;justify-content:space-between}
+  .kb-name{font-size:13px;font-weight:700;color:#172b4d}
+  .kb-turno{font-size:10px;color:#5e6c84;margin-top:2px}
+  .kb-badge{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600;white-space:nowrap}
+  .kb-crits{display:flex;flex-direction:column;gap:5px}
+  .kb-crit-row{display:flex;align-items:center;justify-content:space-between;gap:6px}
+  .kb-crit-name{font-size:11px;color:#5e6c84;flex:1}
+  .kb-crit-btn{font-size:10px;padding:2px 8px;border-radius:4px;border:none;cursor:pointer;font-weight:500;white-space:nowrap}
+  .kb-crit-blank{background:#f4f5f7;color:#97a0af}
+  .kb-crit-blank:hover{background:#ebecf0;color:#172b4d}
+  .kb-crit-done{background:#e3fcef;color:#006644}
+  .kb-footer{display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px solid #f4f5f7;margin-top:auto}
+  .kb-premio-on{font-size:11px;font-weight:700;color:#006644}
+  .kb-premio-off{font-size:11px;color:#97a0af}
+  .kb-check{width:15px;height:15px;accent-color:#0052cc;cursor:pointer}
+  .kb-sep{height:0.5px;background:#dfe1e6;margin:18px 0}
+  .kb-rank-title{font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px}
+  .kb-rank-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
+  .kb-rank-card{background:#fff;border-radius:8px;padding:10px 13px;box-shadow:0 1px 3px rgba(9,30,66,.1);display:flex;align-items:center;gap:10px}
+  .kb-medal{font-size:18px;width:26px;text-align:center}
+  .kb-rname{font-size:13px;font-weight:700;color:#172b4d}
+  .kb-rsub{font-size:10px;color:#5e6c84;margin-top:1px}
+  .kb-ramt{font-size:13px;font-weight:700;color:#006644;margin-left:auto}
+  .kb-empty{text-align:center;padding:20px;color:#c1c7d0;font-size:13px}
+  .kb-bg{background:#f4f5f7;padding:16px;border-radius:10px}
 `;
 
 function renderProductividad() {
@@ -1027,16 +1038,15 @@ function renderProductividad() {
   const si = g('prod_sem_sel') || '0';
   const monto = parseFloat((montoVal+'').replace(/\./g,'').replace(',','.')) || 35000;
 
-  let h = `<style>${PROD_CSS}</style><div class="pd">`;
+  let h = `<style>${PROD_CSS}</style><div class="kb kb-bg">`;
 
   // Header
-  h += `<div class="pd-hdr">
+  h += `<div class="kb-hdr">
     <div>
-      <div class="pd-title">Productividad</div>
+      <div class="kb-title">Productividad</div>
+      <div class="kb-sub">${MES} · ${semanas[parseInt(si)]}</div>
     </div>
-    <div class="pd-badge">${semanas[parseInt(si)]}</div>
-    <div class="pd-sub">${MES}</div>
-    <div class="pd-ctrl">
+    <div class="kb-ctrl">
       <label>Semana</label>
       <select id="prod_sem_sel" onchange="onInp(this);renderProductividad()">`;
   semanas.forEach((sem,i) => h += `<option value="${i}" ${si==i?'selected':''}>${sem}</option>`);
@@ -1046,49 +1056,52 @@ function renderProductividad() {
     </div>
   </div>`;
 
-  // Tabla
-  h += `<div class="pd-wrap-tbl"><table class="pd-tbl"><thead><tr>
-    <th>Agente</th>`;
-  CRITERIOS.forEach(c => h += `<th>${c.label}</th>`);
-  h += `<th>Premio</th></tr></thead><tbody>`;
+  // Cards grid
+  h += `<div class="kb-grid">`;
 
   PANELES.forEach((panel, pi) => {
+    const col = PANEL_COL[panel] || {bg:'#f5f5f5',tc:'#444'};
     PERSONAL[pi].forEach((per, ri) => {
       const base = `prod_${si}_p${pi}_r${ri}`;
       const tieneP = g(`${base}_premio_otorgado`) === '1';
 
-      h += `<tr>
-        <td>
-          <div class="pd-name">${per.n}</div>
-          <div class="pd-info">${panel} · ${per.t}</div>
-        </td>`;
+      h += `<div class="kb-card">
+        <div class="kb-card-top">
+          <div>
+            <div class="kb-name">${per.n}</div>
+            <div class="kb-turno">Turno ${per.t}</div>
+          </div>
+          <span class="kb-badge" style="background:${col.bg};color:${col.tc}">${panel}</span>
+        </div>
+        <div class="kb-crits">`;
 
       CRITERIOS.forEach(c => {
         const key = `${base}_${c.key}`;
         const tieneNota = !!g(key);
-        h += `<td>
-          <button class="pd-pill ${tieneNota?'pd-pill-done':'pd-pill-blank'}"
+        h += `<div class="kb-crit-row">
+          <span class="kb-crit-name">${c.label}</span>
+          <button class="kb-crit-btn ${tieneNota?'kb-crit-done':'kb-crit-blank'}"
             data-key="${key}" data-titulo="${c.label} — ${per.n}"
             onclick="obsClick(this)">
             ${tieneNota ? '✓ Nota' : '+ Nota'}
           </button>
-        </td>`;
+        </div>`;
       });
 
-      h += `<td>
-        <label style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">
-          <input type="checkbox" class="pd-chk" id="${base}_premio_otorgado"
-            ${tieneP?'checked':''}
-            onchange="s(this.id,this.checked?'1':'0');autoSave();renderProductividad()">
-          <span class="${tieneP?'pd-on':'pd-off'}">
+      h += `</div>
+        <div class="kb-footer">
+          <span class="${tieneP?'kb-premio-on':'kb-premio-off'}">
             ${tieneP ? '$'+Math.round(monto).toLocaleString('es-AR') : 'Sin premio'}
           </span>
-        </label>
-      </td></tr>`;
+          <input type="checkbox" class="kb-check" id="${base}_premio_otorgado"
+            ${tieneP?'checked':''}
+            onchange="s(this.id,this.checked?'1':'0');autoSave();renderProductividad()">
+        </div>
+      </div>`;
     });
   });
 
-  h += `</tbody></table></div>`;
+  h += `</div>`;
 
   // Ranking
   const ganadores = [];
@@ -1099,22 +1112,22 @@ function renderProductividad() {
     });
   });
 
-  h += `<div class="pd-sep"></div>
-  <div class="pd-rank-title">Agentes con premio · ${semanas[parseInt(si)]}</div>`;
+  h += `<div class="kb-sep"></div>
+  <div class="kb-rank-title">Agentes con premio · ${semanas[parseInt(si)]}</div>`;
 
   if (ganadores.length === 0) {
-    h += `<div class="pd-empty">Ningún agente seleccionado aún</div>`;
+    h += `<div class="kb-empty">Ningún agente seleccionado aún</div>`;
   } else {
     const medals = ['🥇','🥈','🥉'];
-    h += `<div class="pd-rank-grid">`;
+    h += `<div class="kb-rank-grid">`;
     ganadores.forEach((gn,i) => {
-      h += `<div class="pd-rank-card">
-        <div class="pd-medal">${medals[i]||'🏅'}</div>
+      h += `<div class="kb-rank-card">
+        <div class="kb-medal">${medals[i]||'🏅'}</div>
         <div>
-          <div class="pd-rname">${gn.nom}</div>
-          <div class="pd-rsub">${gn.panel} · ${gn.t}</div>
+          <div class="kb-rname">${gn.nom}</div>
+          <div class="kb-rsub">${gn.panel} · ${gn.t}</div>
         </div>
-        <div class="pd-ramt">$${Math.round(monto).toLocaleString('es-AR')}</div>
+        <div class="kb-ramt">$${Math.round(monto).toLocaleString('es-AR')}</div>
       </div>`;
     });
     h += `</div>`;
