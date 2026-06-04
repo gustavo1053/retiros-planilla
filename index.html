@@ -1056,11 +1056,17 @@ function renderProductividad() {
     </div>
   </div>`;
 
-  // Cards grid
-  h += `<div class="kb-grid">`;
-
+  // Cards agrupadas por panel
   PANELES.forEach((panel, pi) => {
     const col = PANEL_COL[panel] || {bg:'#f5f5f5',tc:'#444'};
+
+    // Header del grupo
+    h += `<div style="display:flex;align-items:center;gap:10px;margin:14px 0 8px">
+      <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:4px;background:${col.bg};color:${col.tc}">${panel}</span>
+      <div style="flex:1;height:1px;background:#dfe1e6"></div>
+    </div>
+    <div class="kb-grid">`;
+
     PERSONAL[pi].forEach((per, ri) => {
       const base = `prod_${si}_p${pi}_r${ri}`;
       const tieneP = g(`${base}_premio_otorgado`) === '1';
@@ -1071,7 +1077,6 @@ function renderProductividad() {
             <div class="kb-name">${per.n}</div>
             <div class="kb-turno">Turno ${per.t}</div>
           </div>
-          <span class="kb-badge" style="background:${col.bg};color:${col.tc}">${panel}</span>
         </div>
         <div class="kb-crits">`;
 
@@ -1081,7 +1086,7 @@ function renderProductividad() {
         h += `<div class="kb-crit-row">
           <span class="kb-crit-name">${c.label}</span>
           <button class="kb-crit-btn ${tieneNota?'kb-crit-done':'kb-crit-blank'}"
-            data-key="${key}" data-titulo="${c.label} — ${per.n}"
+            data-key="${key}" data-titulo="${c.label} — ${per.n} (${panel})"
             onclick="obsClick(this)">
             ${tieneNota ? '✓ Nota' : '+ Nota'}
           </button>
@@ -1099,9 +1104,9 @@ function renderProductividad() {
         </div>
       </div>`;
     });
-  });
 
-  h += `</div>`;
+    h += `</div>`;
+  });
 
   // Ranking
   const ganadores = [];
