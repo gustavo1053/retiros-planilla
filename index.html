@@ -253,6 +253,14 @@ function recalcDia(sem, d) {
   sc(`${sem}_d${d}_totM`, totM);
   sc(`${sem}_d${d}_totT`, totT);
   sc(`${sem}_d${d}_totN`, totN);
+  sc(`${sem}_d${d}_totDia`, totM+totT+totN);
+  // Totales por panel
+  PANELES.forEach((p,pi) => {
+    const pm = nv(g(`${sem}_d${d}_p${pi}_m`));
+    const pt = nv(g(`${sem}_d${d}_p${pi}_t`));
+    const pn = nv(g(`${sem}_d${d}_p${pi}_n`));
+    sc(`${sem}_d${d}_p${pi}_tot`, pm+pt+pn);
+  });
   sc(`${sem}_d${d}_total`, total);
   sc(`${sem}_d${d}_sub`,   sub);
 }
@@ -439,6 +447,7 @@ function renderSemana(shId, titulo) {
         <th style="width:120px">Mañana</th>
         <th style="width:120px">Tarde</th>
         <th style="width:120px">Noche</th>
+        <th style="width:120px;background:#ffe0b2">Total</th>
       </tr></thead>
       <tbody>`;
 
@@ -449,6 +458,7 @@ function renderSemana(shId, titulo) {
         <td>${inp(`${dk}_p${pi}_m`)}</td>
         <td>${inp(`${dk}_p${pi}_t`)}</td>
         <td>${inp(`${dk}_p${pi}_n`)}</td>
+        <td class="calc" style="background:#fff8f0" id="${dk}_p${pi}_tot"></td>
       </tr>`;
     });
 
@@ -458,6 +468,7 @@ function renderSemana(shId, titulo) {
         <td class="calc-r" id="${dk}_totM"></td>
         <td class="calc-r" id="${dk}_totT"></td>
         <td class="calc-r" id="${dk}_totN"></td>
+        <td class="calc-r" id="${dk}_totDia"></td>
       </tr>
       <tr>
         <td></td><td style="font-weight:700">Lezcano Retiro</td>
@@ -466,7 +477,7 @@ function renderSemana(shId, titulo) {
           <button class="obs-btn" data-key="${dk}_retL_obs" data-titulo="Lezcano Retiro" onclick="obsClick(this)" title="Observación">📝</button>
           <span class="obs-preview" id="${dk}_retL_obs_prev"></span>
         </td>
-        <td></td>
+        <td></td><td></td>
       </tr>
       <tr>
         <td></td><td style="font-weight:700">Martin Retiro</td>
@@ -478,11 +489,11 @@ function renderSemana(shId, titulo) {
         <td></td>
       </tr>
       <tr><td></td><td style="font-weight:700">Pagos Fichas</td>
-        <td>${inp(`${dk}_pagF`)}</td><td></td><td></td></tr>
+        <td>${inp(`${dk}_pagF`)}</td><td></td><td></td><td></td></tr>
       <tr style="background:#e8f4e8"><td></td><td style="font-weight:700">banco</td>
-        <td>${inp(`${dk}_banco`)}</td><td></td><td></td></tr>
+        <td>${inp(`${dk}_banco`)}</td><td></td><td></td><td></td></tr>
       <tr class="rojo"><td></td><td>Total</td>
-        <td class="calc-r" id="${dk}_total"></td><td></td><td></td></tr>
+        <td class="calc-r" id="${dk}_total"></td><td></td><td></td><td></td></tr>
       <tr>
         <td></td><td style="font-weight:700">Gasto</td>
         <td>${inp(`${dk}_gasto`)}</td>
@@ -490,7 +501,7 @@ function renderSemana(shId, titulo) {
           <button class="obs-btn" data-key="${dk}_gasto_obs" data-titulo="Gasto" onclick="obsClick(this)" title="Observación">📝</button>
           <span class="obs-preview" id="${dk}_gasto_obs_prev"></span>
         </td>
-        <td></td>
+        <td></td><td></td>
       </tr>
       <tr>
         <td></td><td style="font-weight:700">Compra Us$</td>
@@ -499,10 +510,10 @@ function renderSemana(shId, titulo) {
           <button class="obs-btn" data-key="${dk}_usd_obs" data-titulo="Compra Us$" onclick="obsClick(this)" title="Observación">📝</button>
           <span class="obs-preview" id="${dk}_usd_obs_prev"></span>
         </td>
-        <td></td>
+        <td></td><td></td>
       </tr>
       <tr class="rojo"><td></td><td>Sub Total</td>
-        <td class="calc-r" id="${dk}_sub"></td><td></td><td></td></tr>
+        <td class="calc-r" id="${dk}_sub"></td><td></td><td></td><td></td></tr>
       </tbody></table></div>`;
   }
 
