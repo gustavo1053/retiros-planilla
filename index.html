@@ -657,14 +657,35 @@ function renderSueldo(shId, titulo) {
   const el = document.getElementById(shId);
   if (!el) return;
 
-  let h = `<div class="shdr">${titulo} &nbsp;
-    <input class="c lft wh" id="${shId}_period" value="${g(shId+'_period')}"
-      placeholder="Ej: 04/05 al 10/05" style="width:170px;background:transparent"
-      oninput="onInp(this)" onchange="onInp(this)">
+  // Calcular fechas reales de la semana
+  const suSemIdx = ['sh_su1','sh_su2','sh_su3','sh_su4'].indexOf(shId);
+  const suOffset = parseInt(g(shId+'_offset')) || 0;
+  const suLunes  = luneSemana(MES, suSemIdx + suOffset);
+  const suDias   = Array.from({length:7}, (_,i) => {
+    const dt = new Date(suLunes); dt.setDate(suLunes.getDate()+i); return dt;
+  });
+
+  let h = `<div class="shdr" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span>${titulo}</span>
+    <span style="font-size:10px;font-weight:400;opacity:.8">${periodoLabel(suLunes)}</span>
+    <div class="period-ctrl" style="margin-left:auto">
+      <button class="arr-btn" onclick="moveSuSem('${shId}',-1)">&#8592;</button>
+      <button class="arr-btn" onclick="moveSuSem('${shId}',1)">&#8594;</button>
+    </div>
   </div>
   <table><thead><tr>
     <th>Panel</th><th>Personal</th><th>Tipo Pago</th><th>Turno</th>`;
-  DIAS_CORTO.forEach(d => h += `<th>${d}</th>`);
+
+  suDias.forEach((dt,i) => {
+    const fer = esFeriado(dt);
+    const nom = DIAS_CORTO[i];
+    const dia = dt.getDate();
+    const ferNom = fer ? nombreFeriado(dt) : '';
+    h += `<th class="${fer?'fer-hdr':''}" title="${ferNom}">${nom} ${dia}`;
+    if (fer) h += `<br><span style="font-size:8px;font-weight:400">${ferNom}</span>`;
+    h += `</th>`;
+  });
+
   h += `<th style="background:#d9e1f2">Propina</th>
     <th style="background:#e6ffe6">Total</th>
   </tr></thead><tbody>`;
@@ -678,7 +699,7 @@ function renderSueldo(shId, titulo) {
         <td class="${PC[pi]}">${p}</td>
         <td><input class="c lft" id="${shId}_p${pi}_r${ri}_nom"
           value="${g(shId+'_p'+pi+'_r'+ri+'_nom') || per.n}"
-          oninput="onInp(this)" onchange="onInp(this)" style="min-width:70px"></td>
+          oninput="onInp(this)" style="min-width:70px"></td>
         <td style="text-align:center">
           <select class="sel-tipo" id="${shId}_p${pi}_r${ri}_tipo"
             onchange="onInp(this);colorTipo(this)">
@@ -689,17 +710,20 @@ function renderSueldo(shId, titulo) {
           </select>
         </td>
         <td style="text-align:center">${per.t}</td>`;
+
       for (let d=0; d<7; d++) {
         const fer2 = esFeriado(suDias[d]);
         h += `<td class="${fer2?'feriado':''}">${inp(`${shId}_p${pi}_r${ri}_d${d}`)}</td>`;
       }
+
       h += `<td>${inp(`${shId}_p${pi}_r${ri}_prop`)}</td>
         <td class="calc" style="background:#e6ffe6" id="${shId}_p${pi}_r${ri}_tot"></td>
       </tr>`;
     });
   });
 
-  h += `<tr class="rojo"><td colspan="4">TOTAL</td>`;
+  // Fila totales
+  h += `<tr class="total-row rojo"><td colspan="4">TOTAL</td>`;
   for (let d=0; d<7; d++) h += `<td class="calc-r" id="${shId}_col${d}"></td>`;
   h += `<td></td><td class="calc-r" id="${shId}_subtot"></td></tr>
   </tbody></table>
@@ -731,10 +755,6 @@ function renderSueldo(shId, titulo) {
   colorTiposAll();
 }
 
-// ── FIREBASE ─────────────────────────────────────────────────
-function fbDoc(mes) {
-  return window._doc(window._db, 'retiros_data', mes.replace(/ /g,'_'));
-}
 
 // ── GUARDAR / AUTOSAVE ───────────────────────────────────────
 let asTimer = null;
