@@ -290,13 +290,15 @@ function recalcSemRes(sem) {
     }
     sc(`${sem}_res_p${pi}`, tot);
   });
-  let tL=0, tM=0;
+  let tL=0, tM=0, tG=0;
   for (let d=0; d<7; d++) {
     tL += nv(g(`${sem}_d${d}_retL`));
     tM += nv(g(`${sem}_d${d}_retM`));
+    tG += nv(g(`${sem}_d${d}_gasto`));
   }
   sc(`${sem}_totRetL`, tL);
   sc(`${sem}_totRetM`, tM);
+  sc(`${sem}_totGasto`, tG);
 }
 
 // ── RECALC SUELDO ────────────────────────────────────────────
@@ -544,9 +546,10 @@ function renderSemana(shId, titulo) {
   h += `</tr></thead><tbody><tr>`;
   PANELES.forEach((p,pi) => h += `<td class="calc" id="${shId}_res_p${pi}" style="min-width:95px"></td>`);
   h += `</tr></tbody></table>
-  <div style="padding:4px;font-size:11px;display:flex;gap:20px">
+  <div style="padding:4px;font-size:11px;display:flex;gap:20px;flex-wrap:wrap">
     <span>Retiros Martin:&nbsp;<b id="${shId}_totRetM" style="color:#c00"></b></span>
     <span>Retiros Lezcano:&nbsp;<b id="${shId}_totRetL" style="color:#c00"></b></span>
+    <span>Total Gastos:&nbsp;<b id="${shId}_totGasto" style="color:#c55a11"></b></span>
   </div><br>`;
 
   el.innerHTML = h;
