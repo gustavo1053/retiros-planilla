@@ -70,6 +70,7 @@ input.c.wh{color:#fff}
 .blk{border:1px solid #ccc;margin-bottom:10px;background:#fff}
 .blkhdr{background:#d9e1f2;font-weight:700;padding:3px 8px;font-size:11px;border-bottom:1px solid #ccc;display:flex;gap:12px;align-items:center}
 .feriado{background:#FFE0E0!important}
+.fer-hdr{background:#c00!important;color:#fff!important}
 .sel-tipo{border:1px solid #bbb;border-radius:2px;font-size:10px;font-family:Calibri,Arial,sans-serif;padding:1px 2px;background:#fff;cursor:pointer;width:80px}
 .tipo-D{background:#FFF3CD!important}.tipo-S{background:#D4EDDA!important}.tipo-Q{background:#CCE5FF!important}.tipo-F{background:#E8D5F5!important}
 .obs-btn{background:none;border:none;cursor:pointer;font-size:13px;padding:0 4px;color:#1f3864;vertical-align:middle}
@@ -350,6 +351,42 @@ function recalcCarga(ci) {
   sc(`cg_c${ci}_grand`, grand*0.7);
 }
 
+// ── FERIADOS ARGENTINA 2026 ──────────────────────────────────
+const FERIADOS_2026 = new Set([
+  '2026-01-01','2026-02-16','2026-02-17', // Año nuevo, Carnaval
+  '2026-03-23','2026-03-24',               // Día de la Memoria
+  '2026-04-02',                            // Malvinas
+  '2026-04-03','2026-04-04',               // Semana Santa (Vie Santo, Sáb)
+  '2026-05-01','2026-05-25',               // Día del Trabajador, 25 de Mayo
+  '2026-06-15','2026-06-20',               // Güemes, Flag Day (Belgrano)
+  '2026-07-09',                            // Independencia
+  '2026-08-17',                            // San Martín
+  '2026-10-12',                            // Respeto a la Diversidad
+  '2026-11-20',                            // Soberanía Nacional
+  '2026-12-08','2026-12-25',               // Inmaculada Concepción, Navidad
+]);
+
+function esFeriado(fecha) {
+  if (!fecha) return false;
+  const iso = fecha.toISOString().split('T')[0];
+  return FERIADOS_2026.has(iso);
+}
+
+function nombreFeriado(fecha) {
+  const iso = fecha.toISOString().split('T')[0];
+  const nombres = {
+    '2026-01-01':'Año Nuevo','2026-02-16':'Carnaval','2026-02-17':'Carnaval',
+    '2026-03-23':'Día de la Memoria','2026-03-24':'Día de la Memoria',
+    '2026-04-02':'Día de Malvinas','2026-04-03':'Viernes Santo','2026-04-04':'Sábado Santo',
+    '2026-05-01':'Día del Trabajador','2026-05-25':'25 de Mayo',
+    '2026-06-15':'Día de Güemes','2026-06-20':'Día de la Bandera',
+    '2026-07-09':'Día de la Independencia','2026-08-17':'San Martín',
+    '2026-10-12':'Diversidad Cultural','2026-11-20':'Soberanía Nacional',
+    '2026-12-08':'Inmaculada Concepción','2026-12-25':'Navidad',
+  };
+  return nombres[iso] || '';
+}
+
 // ── HELPERS FECHA ────────────────────────────────────────────
 // Devuelve el lunes de la semana N del mes (0-indexed)
 function luneSemana(mesStr, semIdx) {
@@ -384,6 +421,16 @@ const SEM_IDX = {'sh_s1':0,'sh_s2':1,'sh_s3':2,'sh_s4':3};
 function getSemOffset(shId) {
   const key = shId+'_offset';
   return parseInt(g(key)) || 0;
+}
+
+function moveSuSem(shId, delta) {
+  const key = shId+'_offset';
+  const cur = parseInt(g(key)) || 0;
+  s(key, cur+delta);
+  // Re-render solo la hoja de sueldos activa
+  const suMap = {'sh_su1':0,'sh_su2':1,'sh_su3':2,'sh_su4':3};
+  const idx = suMap[shId];
+  if (idx !== undefined) renderSueldo(shId, `Sueldos Semana ${idx+1} — ${MES}`);
 }
 
 function moveSem(shId, delta) {
@@ -643,7 +690,8 @@ function renderSueldo(shId, titulo) {
         </td>
         <td style="text-align:center">${per.t}</td>`;
       for (let d=0; d<7; d++) {
-        h += `<td>${inp(`${shId}_p${pi}_r${ri}_d${d}`)}</td>`;
+        const fer2 = esFeriado(suDias[d]);
+        h += `<td class="${fer2?'feriado':''}">${inp(`${shId}_p${pi}_r${ri}_d${d}`)}</td>`;
       }
       h += `<td>${inp(`${shId}_p${pi}_r${ri}_prop`)}</td>
         <td class="calc" style="background:#e6ffe6" id="${shId}_p${pi}_r${ri}_tot"></td>
