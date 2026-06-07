@@ -756,6 +756,11 @@ function renderSueldo(shId, titulo) {
 }
 
 
+// ── FIREBASE HELPERS ─────────────────────────────────────────
+function fbDoc(mes) {
+  return window._doc(window._db, 'retiros_data', mes.replace(/ /g,'_'));
+}
+
 // ── GUARDAR / AUTOSAVE ───────────────────────────────────────
 let asTimer = null;
 function autoSave() {
