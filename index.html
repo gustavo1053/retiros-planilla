@@ -92,6 +92,16 @@ input.c.wh{color:#fff}
 .obs-cancel:hover{background:#888}
 .obs-preview{font-size:10px;color:#555;font-style:italic;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle}
 .autosave{position:fixed;bottom:8px;right:12px;background:#333;color:#fff;font-size:10px;padding:3px 8px;border-radius:3px;display:none;z-index:300}
+.res-flo{position:fixed;top:78px;right:14px;background:#fff;border:1px solid #ddd;border-radius:10px;padding:14px 18px;z-index:150;box-shadow:0 4px 20px rgba(0,0,0,.13);min-width:230px;display:none;font-family:Calibri,Arial,sans-serif}
+.res-flo.visible{display:block}
+.res-flo-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#999;margin-bottom:10px}
+.res-flo-paneles{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px}
+.res-flo-p{font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px}
+.res-flo-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #f0f0f0}
+.res-flo-row:last-child{border:none}
+.res-flo-lbl{font-size:13px;color:#555}
+.res-flo-val{font-size:17px;font-weight:700;color:#c00}
+.res-flo-val.gasto{color:#c55a11}
 /* Panel resumen flotante */
 .res-flotante{position:fixed;top:75px;right:16px;background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px 16px;z-index:150;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:220px;display:none}
 .res-flotante.visible{display:block}
@@ -205,6 +215,43 @@ function showSheet(id, el) {
   document.querySelectorAll('.stab').forEach(x => x.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   el.classList.add('active');
+  const flo = document.getElementById('resFlotante');
+  if (!flo) return;
+  const semMatch = id.match(/^sh_s[1-4]$/);
+  if (semMatch) { flo.classList.add('visible'); actualizarFlotante(id); }
+  else { flo.classList.remove('visible'); }
+}
+
+function actualizarFlotante(shId) {
+  const semNums = {'sh_s1':1,'sh_s2':2,'sh_s3':3,'sh_s4':4};
+  const t = document.getElementById('resFloTitulo');
+  if (t) t.textContent = `Semana ${semNums[shId]||1} — ${MES}`;
+  const PBGS = ['#FFFF00','#FFC000','#FF0000','#00B050','#0070C0','#7030A0','#00B0F0','#e0e0e0'];
+  const PTCS = ['#000','#000','#fff','#fff','#fff','#fff','#000','#000'];
+  let phtml = '';
+  PANELES.forEach((p,pi) => {
+    let tot=0;
+    for(let d=0;d<7;d++){
+      tot+=nv(g(`${shId}_d${d}_p${pi}_m`));
+      tot+=nv(g(`${shId}_d${d}_p${pi}_t`));
+      tot+=nv(g(`${shId}_d${d}_p${pi}_n`));
+    }
+    phtml+=`<span class="res-flo-p" style="background:${PBGS[pi]};color:${PTCS[pi]}">${p}${tot?' '+fmt(tot):''}</span>`;
+  });
+  const pd = document.getElementById('resFloPaneles');
+  if (pd) pd.innerHTML = phtml;
+  let tM=0,tL=0,tG=0;
+  for(let d=0;d<7;d++){
+    tM+=nv(g(`${shId}_d${d}_retM`));
+    tL+=nv(g(`${shId}_d${d}_retL`));
+    tG+=nv(g(`${shId}_d${d}_gasto`));
+  }
+  const eM=document.getElementById('resFloRetM');
+  const eL=document.getElementById('resFloRetL');
+  const eG=document.getElementById('resFloGasto');
+  if(eM) eM.textContent = tM?'$'+fmt(tM):'—';
+  if(eL) eL.textContent = tL?'$'+fmt(tL):'—';
+  if(eG) eG.textContent = tG?'$'+fmt(tG):'—';
 }
 
 async function cambiarMes() {
@@ -1311,5 +1358,22 @@ if ('serviceWorker' in navigator) {
   </div>
 </div>
 
+<!-- Resumen flotante -->
+<div class="res-flo" id="resFlotante">
+  <div class="res-flo-title" id="resFloTitulo">Semana 1</div>
+  <div class="res-flo-paneles" id="resFloPaneles"></div>
+  <div class="res-flo-row">
+    <span class="res-flo-lbl">Retiros Martin</span>
+    <span class="res-flo-val" id="resFloRetM">—</span>
+  </div>
+  <div class="res-flo-row">
+    <span class="res-flo-lbl">Retiros Lezcano</span>
+    <span class="res-flo-val" id="resFloRetL">—</span>
+  </div>
+  <div class="res-flo-row">
+    <span class="res-flo-lbl">Total Gastos</span>
+    <span class="res-flo-val gasto" id="resFloGasto">—</span>
+  </div>
+</div>
 </body>
 </html>
