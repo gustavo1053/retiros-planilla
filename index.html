@@ -1326,6 +1326,9 @@ function renderAll() {
   renderDirecciones();
   renderFrancos();
   renderProductividad();
+  // Mostrar flotante por defecto en Semana 1
+  const flo = document.getElementById('resFlotante');
+  if (flo) { flo.classList.add('visible'); actualizarFlotante('sh_s1'); }
 }
 
 // ── INIT ─────────────────────────────────────────────────────
