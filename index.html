@@ -995,31 +995,31 @@ function renderFrancos() {
      turnos:[
        {t:'Mañana', d:['Andrea','Lud','Andrea','Andrea','Andrea','Andrea','Andrea']},
        {t:'Tarde',  d:['Meli','Sofi','Meli','Meli','Meli','Meli','Meli']},
-       {t:'Noche',  d:['Tammi','Tammi','Tammi','Tammi','Flor','Tammi','Tammi']},
+       {t:'Noche',  d:['Guada','Guada','Guada','Flor','Guada','Guada','Guada']},
      ]},
     {panel:'Age 19', bg:'#FFC000', tc:'#000',
      turnos:[
        {t:'Mañana', d:['Lourdes','Lourdes','Lourdes','Lourdes','Lourdes','Lourdes','Lourdes']},
-       {t:'Tarde',  d:['Ingrid','Ingrid','Sofi','Ingrid','Ingrid','Ingrid','Ingrid']},
-       {t:'Noche',  d:['Nico','Gua','Nico','Nico','Nico','Nico','Nico']},
+       {t:'Tarde',  d:['Tami','Tami','Sofi','Tami','Tami','Tami','Tami']},
+       {t:'Noche',  d:['Nico','Valen','Nico','Nico','Nico','Nico','Nico']},
      ]},
     {panel:'Age 21', bg:'#FF0000', tc:'#fff',
      turnos:[
        {t:'Mañana', d:['Nao','Nao','Nao','Nao','Nao','Lud','Nao']},
-       {t:'Tarde',  d:['Jhona','Jhona','Jhona','Jhona','Jhona','Jhona','Gua']},
+       {t:'Tarde',  d:['Jhona','Jhona','Jhona','Jhona','Jhona','Jhona','Valen']},
        {t:'Noche',  d:['Majo','Majo','Majo','Majo','Majo','Flor','Majo']},
      ]},
     {panel:'Age 22', bg:'#00B050', tc:'#fff',
      turnos:[
        {t:'Mañana', d:['Mili','Mili','Mili','Mili','Lud','Mili','Mili']},
        {t:'Tarde',  d:['Vero','Vero','Vero','Vero','Vero','Sofi','Vero']},
-       {t:'Noche',  d:['Gua','Jeni','Jeni','Jeni','Jeni','Jeni','Jeni']},
+       {t:'Noche',  d:['Valen','Jeni','Jeni','Jeni','Jeni','Jeni','Jeni']},
      ]},
     {panel:'Age 23', bg:'#0070C0', tc:'#fff',
      turnos:[
        {t:'Mañana', d:['Agus','Agus','Agus','Agus','Agus','Agus','Lud']},
        {t:'Tarde',  d:['Maria','Maria','Maria','Maria','Maria','Maria','Maria']},
-       {t:'Noche',  d:['Anto','Anto','Anto','Flor','Anto','Anto','Anto']},
+       {t:'Noche',  d:['Anto','Anto','Anto','Anto','Flor','Anto','Anto']},
      ]},
     {panel:'Age 24', bg:'#7030A0', tc:'#fff',
      turnos:[
@@ -1036,7 +1036,7 @@ function renderFrancos() {
     {panel:'SM', bg:'#e0e0e0', tc:'#000',
      turnos:[
        {t:'Mañana', d:['Rafa','Rafa','Rafa','Rafa','Rafa','Rafa','Rafa']},
-       {t:'Tarde',  d:['Brisa','Brisa','Brisa','Sofi','Brisa','Brisa','Brisa']},
+       {t:'Tarde',  d:['Bri','Bri','Bri','Sofi','Bri','Bri','Bri']},
        {t:'Noche',  d:['Mile','Mile','Mile','Mile','Mile','Mile','Flor']},
      ]},
   ];
@@ -1079,6 +1079,28 @@ function renderFrancos() {
     });
     h += `</tbody></table>`;
   });
+
+  // Tablas de reemplazantes
+  const REEMPL_DATA = [
+    {panel:'Lud',   bg:'#FF0000', tc:'#fff', turnos:[{t:'M',d:['—','18','25','24','22','21','23']},{t:'T',d:['—','—','—','—','—','—','—']},{t:'N',d:['—','—','—','—','—','—','—']}]},
+    {panel:'Sofi',  bg:'#FF69B4', tc:'#fff', turnos:[{t:'M',d:['—','—','—','—','—','—','—']},{t:'T',d:['25','18','19','SM','24','22','—']},{t:'N',d:['—','—','—','—','—','—','—']}]},
+    {panel:'Flor',  bg:'#FF0000', tc:'#fff', turnos:[{t:'M',d:['—','—','—','—','—','—','—']},{t:'T',d:['—','—','—','—','—','—','—']},{t:'N',d:['24','—','25','23','18','21','SM']}]},
+    {panel:'Valen', bg:'#FF69B4', tc:'#fff', turnos:[{t:'M',d:['—','—','—','—','—','—','—']},{t:'T',d:['—','—','—','—','—','—','—']},{t:'N',d:['22','19','—','—','—','—','21']}]},
+  ];
+  h += '<div style="margin-top:14px"><div class="section-header" style="background:#555;color:#fff;padding:4px 8px;margin-bottom:6px;font-size:11px">Tabla de Reemplazantes</div>';
+  h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+  REEMPL_DATA.forEach(grp => {
+    h += '<table><thead><tr><th colspan="8" style="background:'+grp.bg+';color:'+grp.tc+';text-align:left;padding:4px 8px">'+grp.panel+'</th></tr><tr><th></th>';
+    DIAS.forEach(d => { h += '<th style="text-align:center">'+d+'</th>'; });
+    h += '</tr></thead><tbody>';
+    grp.turnos.forEach(t => {
+      h += '<tr><td class="bold">'+t.t+'</td>';
+      t.d.forEach(v => { h += v==='—' ? '<td></td>' : '<td style="background:#C00000;color:#fff;text-align:center;font-weight:700">'+v+'</td>'; });
+      h += '</tr>';
+    });
+    h += '</tbody></table>';
+  });
+  h += '</div></div>';
 
   el.innerHTML = h;
 }
@@ -1130,7 +1152,7 @@ function colorTiposAll() {
 }
 
 // Colorear celda de franco si es reemplazante
-const REEMPLAZANTES_SET = new Set(['Lud','Sofi','Flor','Gua','Joha']);
+const REEMPLAZANTES_SET = new Set(['Lud','Sofi','Flor','Valen','Guada','Gua','Joha']);
 function colorFranco(inp) {
   const es = REEMPLAZANTES_SET.has(inp.value.trim());
   inp.parentElement.style.background = es ? '#C00000' : '#fff';
