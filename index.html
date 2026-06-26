@@ -829,6 +829,28 @@ function autoSave() {
   asTimer = setTimeout(() => guardarFirebase(), 800);
 }
 
+async function guardarFrancos() {
+  // Recopilar los datos actuales de los inputs de francos
+  try {
+    if (!window._fbReady || !window._db) return;
+    // Leer valores actuales de los inputs fra_g*
+    const grupos = JSON.parse(JSON.stringify(GRUPOS)); // copia de GRUPOS con valores editados
+    grupos.forEach((grp, gi) => {
+      grp.turnos.forEach((turno, ti) => {
+        turno.d.forEach((_, di) => {
+          const key = `fra_g${gi}_t${ti}_d${di}`;
+          const el = document.getElementById(key);
+          if (el && el.value) turno.d[di] = el.value;
+        });
+      });
+    });
+    await window._setDoc(
+      window._doc(window._db, 'francos_data', 'tabla'),
+      { grupos, reempl: REEMPL_DATA_GLOBAL, updated: new Date().toISOString() }
+    );
+  } catch(e) { console.warn('Error guardando francos:', e); }
+}
+
 async function guardarFirebase() {
   const m = document.getElementById('asMsg');
   if (m) { m.style.display='block'; m.textContent='Guardando...'; }
@@ -838,6 +860,8 @@ async function guardarFirebase() {
     // Guardar en Firebase si está disponible
     if (window._fbReady && window._db) {
       await window._setDoc(fbDoc(MES), { data: JSON.stringify(DATA[MES]||{}), mes: MES, updated: new Date().toISOString() });
+      // También guardar francos si estamos en esa sección
+      await guardarFrancos();
     }
     if (m) { m.textContent='✓ Guardado'; setTimeout(()=>m.style.display='none',1200); }
   } catch(e) {
@@ -1081,7 +1105,8 @@ function renderFrancos() {
   });
 
   // Tablas de reemplazantes
-  const REEMPL_DATA = [
+  window.REEMPL_DATA_GLOBAL = REEMPL_DATA_GLOBAL || [];
+  window.REEMPL_DATA_GLOBAL = [
     {panel:'Lud',   bg:'#FF0000', tc:'#fff', turnos:[{t:'M',d:['—','18','25','24','22','21','23']},{t:'T',d:['—','—','—','—','—','—','—']},{t:'N',d:['—','—','—','—','—','—','—']}]},
     {panel:'Sofi',  bg:'#FF69B4', tc:'#fff', turnos:[{t:'M',d:['—','—','—','—','—','—','—']},{t:'T',d:['25','18','19','SM','24','22','—']},{t:'N',d:['—','—','—','—','—','—','—']}]},
     {panel:'Flor',  bg:'#FF0000', tc:'#fff', turnos:[{t:'M',d:['—','—','—','—','—','—','—']},{t:'T',d:['—','—','—','—','—','—','—']},{t:'N',d:['24','—','25','23','18','21','SM']}]},
@@ -1089,7 +1114,7 @@ function renderFrancos() {
   ];
   h += '<div style="margin-top:14px"><div class="section-header" style="background:#555;color:#fff;padding:4px 8px;margin-bottom:6px;font-size:11px">Tabla de Reemplazantes</div>';
   h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
-  REEMPL_DATA.forEach(grp => {
+  window.REEMPL_DATA_GLOBAL.forEach(grp => {
     h += '<table><thead><tr><th colspan="8" style="background:'+grp.bg+';color:'+grp.tc+';text-align:left;padding:4px 8px">'+grp.panel+'</th></tr><tr><th></th>';
     DIAS.forEach(d => { h += '<th style="text-align:center">'+d+'</th>'; });
     h += '</tr></thead><tbody>';
