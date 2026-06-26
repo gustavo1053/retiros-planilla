@@ -1152,7 +1152,7 @@ function colorTiposAll() {
 }
 
 // Colorear celda de franco si es reemplazante
-const REEMPLAZANTES_SET = new Set(['Lud','Sofi','Flor','Valen','Guada','Gua','Joha']);
+const REEMPLAZANTES_SET = new Set(['Lud','Sofi','Flor','Valen','Guada','Gua']);
 function colorFranco(inp) {
   const es = REEMPLAZANTES_SET.has(inp.value.trim());
   inp.parentElement.style.background = es ? '#C00000' : '#fff';
