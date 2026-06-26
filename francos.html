@@ -16,14 +16,14 @@ td,th{border:1px solid #bbb;padding:4px 8px;white-space:nowrap;text-align:center
 th{font-weight:700;background:#d9e1f2}
 .panel-hdr{text-align:left;font-size:12px;font-weight:700;padding:5px 8px}
 .turno{font-weight:700;text-align:center;color:#fff;width:70px}
-.turno-M{background:#1f3864}
-.turno-T{background:#2e7d32}
-.turno-N{background:#424242}
+.turno-M{background:#1f3864}.turno-T{background:#2e7d32}.turno-N{background:#424242}
 .reemplazo{background:#C00000!important;color:#fff!important;font-weight:700}
 .normal{background:#fff;color:#000}
 .sec-hdr{background:#555;color:#fff;font-weight:700;font-size:12px;padding:5px 10px;margin:14px 0 8px;border-radius:4px}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.updated{font-size:10px;color:#aaa;padding:4px 0}
+.updated{font-size:10px;color:#888;padding:4px 0;margin-bottom:8px}
+.loading{text-align:center;padding:40px;color:#888;font-size:14px}
+.badge-ok{display:inline-block;background:#e8f5e9;color:#2e7d32;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:8px}
 </style>
 </head>
 <body>
@@ -32,119 +32,148 @@ th{font-weight:700;background:#d9e1f2}
   <span class="sub" id="fechaActual"></span>
 </header>
 <div class="container">
-  <div class="updated" id="updatedMsg"></div>
-  <div id="tablaFrancos"></div>
+  <div class="updated" id="updatedMsg">Cargando datos...</div>
+  <div id="tablaFrancos"><div class="loading">⏳ Conectando con Firebase...</div></div>
   <div class="sec-hdr">Tabla de Reemplazantes</div>
   <div class="grid-2" id="tablaReempl"></div>
 </div>
 
-<script>
+<script type="module">
+import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyCGRYyo9EmR0NB3TImzZIP4SuDpDwwMgVc",
+  authDomain:        "planilla-perdidas---ganancias.firebaseapp.com",
+  projectId:         "planilla-perdidas---ganancias",
+  storageBucket:     "planilla-perdidas---ganancias.firebasestorage.app",
+  messagingSenderId: "179047310261",
+  appId:             "1:179047310261:web:2e5ad044d98751985d2ffc"
+};
+const app = initializeApp(firebaseConfig, 'francos');
+const db  = getFirestore(app);
+
 const DIAS = ['Lunes','Martes','Miérc.','Jueves','Viernes','Sábado','Domingo'];
 const REEMPLAZANTES = new Set(['Lud','Sofi','Flor','Valen','Guada','Gua']);
 
-const GRUPOS = [
-    {panel:'Age 18', bg:'#FFFF00', tc:'#000',
-     turnos:[
-       {t:'Mañana', d:['Andrea','Lud','Andrea','Andrea','Andrea','Andrea','Andrea']},
-       {t:'Tarde',  d:['Meli','Sofi','Meli','Meli','Meli','Meli','Meli']},
-       {t:'Noche',  d:['Guada','Guada','Guada','Flor','Guada','Guada','Guada']},
-     ]},
-    {panel:'Age 19', bg:'#FFC000', tc:'#000',
-     turnos:[
-       {t:'Mañana', d:['Lourdes','Lourdes','Lourdes','Lourdes','Lourdes','Lourdes','Lourdes']},
-       {t:'Tarde',  d:['Tami','Tami','Sofi','Tami','Tami','Tami','Tami']},
-       {t:'Noche',  d:['Nico','Valen','Nico','Nico','Nico','Nico','Nico']},
-     ]},
-    {panel:'Age 21', bg:'#FF0000', tc:'#fff',
-     turnos:[
-       {t:'Mañana', d:['Nao','Nao','Nao','Nao','Nao','Lud','Nao']},
-       {t:'Tarde',  d:['Jhona','Jhona','Jhona','Jhona','Jhona','Jhona','Valen']},
-       {t:'Noche',  d:['Majo','Majo','Majo','Majo','Majo','Flor','Majo']},
-     ]},
-    {panel:'Age 22', bg:'#00B050', tc:'#fff',
-     turnos:[
-       {t:'Mañana', d:['Mili','Mili','Mili','Mili','Lud','Mili','Mili']},
-       {t:'Tarde',  d:['Vero','Vero','Vero','Vero','Vero','Sofi','Vero']},
-       {t:'Noche',  d:['Valen','Jeni','Jeni','Jeni','Jeni','Jeni','Jeni']},
-     ]},
-    {panel:'Age 23', bg:'#0070C0', tc:'#fff',
-     turnos:[
-       {t:'Mañana', d:['Agus','Agus','Agus','Agus','Agus','Agus','Lud']},
-       {t:'Tarde',  d:['Maria','Maria','Maria','Maria','Maria','Maria','Maria']},
-       {t:'Noche',  d:['Anto','Anto','Anto','Anto','Flor','Anto','Anto']},
-     ]},
-    {panel:'Age 24', bg:'#7030A0', tc:'#fff',
-     turnos:[
-       {t:'Mañana', d:['Agus','Agus','Agus','Lud','Agus','Agus','Agus']},
-       {t:'Tarde',  d:['Romi','Romi','Romi','Romi','Sofi','Romi','Romi']},
-       {t:'Noche',  d:['Flor','Joha','Joha','Joha','Joha','Joha','Joha']},
-     ]},
-    {panel:'Age 25', bg:'#00B0F0', tc:'#000',
-     turnos:[
-       {t:'Mañana', d:['Cami','Cami','Lud','Cami','Cami','Cami','Cami']},
-       {t:'Tarde',  d:['Sofi','Thiago','Thiago','Thiago','Thiago','Thiago','Thiago']},
-       {t:'Noche',  d:['May','May','Flor','May','May','May','May']},
-     ]},
-    {panel:'SM', bg:'#e0e0e0', tc:'#000',
-     turnos:[
-       {t:'Mañana', d:['Rafa','Rafa','Rafa','Rafa','Rafa','Rafa','Rafa']},
-       {t:'Tarde',  d:['Bri','Bri','Bri','Sofi','Bri','Bri','Bri']},
-       {t:'Noche',  d:['Mile','Mile','Mile','Mile','Mile','Mile','Flor']},
-     ]},
-  ];
+const GRUPOS_DEFAULT = [
+  {panel:'Age 18', bg:'#FFFF00', tc:'#000', turnos:[
+    {t:'Mañana', d:['Andrea','Lud','Andrea','Andrea','Andrea','Andrea','Andrea']},
+    {t:'Tarde',  d:['Meli','Sofi','Meli','Meli','Meli','Meli','Meli']},
+    {t:'Noche',  d:['Guada','Guada','Guada','Flor','Guada','Guada','Guada']},
+  ]},
+  {panel:'Age 19', bg:'#FFC000', tc:'#000', turnos:[
+    {t:'Mañana', d:['Lourdes','Lourdes','Lourdes','Lourdes','Lourdes','Lourdes','Lourdes']},
+    {t:'Tarde',  d:['Tami','Tami','Sofi','Tami','Tami','Tami','Tami']},
+    {t:'Noche',  d:['Nico','Valen','Nico','Nico','Nico','Nico','Nico']},
+  ]},
+  {panel:'Age 21', bg:'#FF0000', tc:'#fff', turnos:[
+    {t:'Mañana', d:['Nao','Nao','Nao','Nao','Nao','Lud','Nao']},
+    {t:'Tarde',  d:['Jhona','Jhona','Jhona','Jhona','Jhona','Jhona','Valen']},
+    {t:'Noche',  d:['Majo','Majo','Majo','Majo','Majo','Flor','Majo']},
+  ]},
+  {panel:'Age 22', bg:'#00B050', tc:'#fff', turnos:[
+    {t:'Mañana', d:['Mili','Mili','Mili','Mili','Lud','Mili','Mili']},
+    {t:'Tarde',  d:['Vero','Vero','Vero','Vero','Vero','Sofi','Vero']},
+    {t:'Noche',  d:['Valen','Jeni','Jeni','Jeni','Jeni','Jeni','Jeni']},
+  ]},
+  {panel:'Age 23', bg:'#0070C0', tc:'#fff', turnos:[
+    {t:'Mañana', d:['Agus','Agus','Agus','Agus','Agus','Agus','Lud']},
+    {t:'Tarde',  d:['Maria','Maria','Maria','Maria','Maria','Maria','Maria']},
+    {t:'Noche',  d:['Anto','Anto','Anto','Anto','Flor','Anto','Anto']},
+  ]},
+  {panel:'Age 24', bg:'#7030A0', tc:'#fff', turnos:[
+    {t:'Mañana', d:['Agus','Agus','Agus','Lud','Agus','Agus','Agus']},
+    {t:'Tarde',  d:['Romi','Romi','Romi','Romi','Sofi','Romi','Romi']},
+    {t:'Noche',  d:['Flor','Joha','Joha','Joha','Joha','Joha','Joha']},
+  ]},
+  {panel:'Age 25', bg:'#00B0F0', tc:'#000', turnos:[
+    {t:'Mañana', d:['Cami','Cami','Lud','Cami','Cami','Cami','Cami']},
+    {t:'Tarde',  d:['Sofi','Thiago','Thiago','Thiago','Thiago','Thiago','Thiago']},
+    {t:'Noche',  d:['May','May','Flor','May','May','May','May']},
+  ]},
+  {panel:'SM', bg:'#e0e0e0', tc:'#000', turnos:[
+    {t:'Mañana', d:['Rafa','Rafa','Rafa','Rafa','Rafa','Rafa','Rafa']},
+    {t:'Tarde',  d:['Bri','Bri','Bri','Sofi','Bri','Bri','Bri']},
+    {t:'Noche',  d:['Mile','Mile','Mile','Mile','Mile','Mile','Flor']},
+  ]},
+];
 
-const REEMPL_DATA = [
-    {panel:'Lud',   bg:'#FF0000', tc:'#fff', turnos:[{t:'M',d:['—','18','25','24','22','21','23']},{t:'T',d:['—','—','—','—','—','—','—']},{t:'N',d:['—','—','—','—','—','—','—']}]},
-    {panel:'Sofi',  bg:'#FF69B4', tc:'#fff', turnos:[{t:'M',d:['—','—','—','—','—','—','—']},{t:'T',d:['25','18','19','SM','24','22','—']},{t:'N',d:['—','—','—','—','—','—','—']}]},
-    {panel:'Flor',  bg:'#FF0000', tc:'#fff', turnos:[{t:'M',d:['—','—','—','—','—','—','—']},{t:'T',d:['—','—','—','—','—','—','—']},{t:'N',d:['24','—','25','23','18','21','SM']}]},
-    {panel:'Valen', bg:'#FF69B4', tc:'#fff', turnos:[{t:'M',d:['—','—','—','—','—','—','—']},{t:'T',d:['—','—','—','—','—','—','—']},{t:'N',d:['22','19','—','—','—','—','21']}]},
-  ];
+const REEMPL_DEFAULT = [
+  {panel:'Lud',   bg:'#FF0000', tc:'#fff', turnos:[{t:'M',d:['—','18','25','24','22','21','23']},{t:'T',d:['—','—','—','—','—','—','—']},{t:'N',d:['—','—','—','—','—','—','—']}]},
+  {panel:'Sofi',  bg:'#FF69B4', tc:'#fff', turnos:[{t:'M',d:['—','—','—','—','—','—','—']},{t:'T',d:['25','18','19','SM','24','22','—']},{t:'N',d:['—','—','—','—','—','—','—']}]},
+  {panel:'Flor',  bg:'#FF0000', tc:'#fff', turnos:[{t:'M',d:['—','—','—','—','—','—','—']},{t:'T',d:['—','—','—','—','—','—','—']},{t:'N',d:['24','—','25','23','18','21','SM']}]},
+  {panel:'Valen', bg:'#FF69B4', tc:'#fff', turnos:[{t:'M',d:['—','—','—','—','—','—','—']},{t:'T',d:['—','—','—','—','—','—','—']},{t:'N',d:['22','19','—','—','—','—','21']}]},
+];
+
+function renderGrupos(grupos) {
+  let h = '';
+  grupos.forEach(grp => {
+    h += `<table><thead>
+      <tr><th colspan="8" class="panel-hdr" style="background:${grp.bg};color:${grp.tc}">${grp.panel}</th></tr>
+      <tr><th></th>${DIAS.map(d=>`<th>${d}</th>`).join('')}</tr>
+    </thead><tbody>`;
+    grp.turnos.forEach(turno => {
+      const tc = turno.t==='Mañana'?'turno-M':turno.t==='Tarde'?'turno-T':'turno-N';
+      h += `<tr><td class="turno ${tc}">${turno.t}</td>`;
+      turno.d.forEach(p => {
+        h += `<td class="${REEMPLAZANTES.has(p)?'reemplazo':'normal'}">${p}</td>`;
+      });
+      h += `</tr>`;
+    });
+    h += `</tbody></table>`;
+  });
+  return h;
+}
+
+function renderReempl(data) {
+  let h = '';
+  data.forEach(grp => {
+    h += `<table><thead>
+      <tr><th colspan="8" class="panel-hdr" style="background:${grp.bg};color:${grp.tc}">${grp.panel}</th></tr>
+      <tr><th></th>${DIAS.map(d=>`<th>${d}</th>`).join('')}</tr>
+    </thead><tbody>`;
+    grp.turnos.forEach(t => {
+      h += `<tr><td style="font-weight:700">${t.t}</td>`;
+      t.d.forEach(v => h += v==='—'?`<td></td>`:`<td style="background:#C00000;color:#fff;font-weight:700">${v}</td>`);
+      h += `</tr>`;
+    });
+    h += `</tbody></table>`;
+  });
+  return h;
+}
 
 // Fecha actual
 const now = new Date();
-document.getElementById('fechaActual').textContent = now.toLocaleDateString('es-AR', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+document.getElementById('fechaActual').textContent =
+  now.toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
-// Render grupos
-let h = '';
-GRUPOS.forEach(grp => {
-  h += `<table>
-    <thead>
-      <tr><th colspan="8" class="panel-hdr" style="background:${grp.bg};color:${grp.tc}">${grp.panel}</th></tr>
-      <tr><th></th>${DIAS.map(d=>`<th>${d}</th>`).join('')}</tr>
-    </thead>
-    <tbody>`;
-  grp.turnos.forEach(turno => {
-    const tc = turno.t==='Mañana'?'turno-M':turno.t==='Tarde'?'turno-T':'turno-N';
-    h += `<tr><td class="turno ${tc}">${turno.t}</td>`;
-    turno.d.forEach(persona => {
-      const esR = REEMPLAZANTES.has(persona);
-      h += `<td class="${esR?'reemplazo':'normal'}">${persona}</td>`;
-    });
-    h += `</tr>`;
-  });
-  h += `</tbody></table>`;
-});
-document.getElementById('tablaFrancos').innerHTML = h;
+// Intentar cargar datos editados desde Firebase
+async function cargar() {
+  try {
+    const snap = await getDoc(doc(db, 'francos_data', 'tabla'));
+    if (snap.exists() && snap.data().grupos) {
+      const data = snap.data();
+      document.getElementById('tablaFrancos').innerHTML = renderGrupos(data.grupos);
+      document.getElementById('tablaReempl').innerHTML = renderReempl(data.reempl || REEMPL_DEFAULT);
+      const updated = data.updated ? new Date(data.updated).toLocaleString('es-AR') : '—';
+      document.getElementById('updatedMsg').innerHTML =
+        `Última actualización: ${updated} <span class="badge-ok">✓ En línea</span>`;
+    } else {
+      // Usar datos por defecto del código
+      document.getElementById('tablaFrancos').innerHTML = renderGrupos(GRUPOS_DEFAULT);
+      document.getElementById('tablaReempl').innerHTML = renderReempl(REEMPL_DEFAULT);
+      document.getElementById('updatedMsg').textContent = 'Mostrando datos base (sin ediciones guardadas)';
+    }
+  } catch(e) {
+    // Sin conexión: mostrar datos por defecto
+    document.getElementById('tablaFrancos').innerHTML = renderGrupos(GRUPOS_DEFAULT);
+    document.getElementById('tablaReempl').innerHTML = renderReempl(REEMPL_DEFAULT);
+    document.getElementById('updatedMsg').textContent = 'Datos base (sin conexión)';
+  }
+}
 
-// Render reemplazantes
-let h2 = '';
-REEMPL_DATA.forEach(grp => {
-  h2 += `<table>
-    <thead>
-      <tr><th colspan="8" class="panel-hdr" style="background:${grp.bg};color:${grp.tc}">${grp.panel}</th></tr>
-      <tr><th></th>${DIAS.map(d=>`<th>${d}</th>`).join('')}</tr>
-    </thead>
-    <tbody>`;
-  grp.turnos.forEach(t => {
-    h2 += `<tr><td class="bold" style="font-weight:700">${t.t}</td>`;
-    t.d.forEach(v => {
-      h2 += v==='—' ? `<td></td>` : `<td style="background:#C00000;color:#fff;font-weight:700">${v}</td>`;
-    });
-    h2 += `</tr>`;
-  });
-  h2 += `</tbody></table>`;
-});
-document.getElementById('tablaReempl').innerHTML = h2;
+cargar();
 </script>
 </body>
 </html>
