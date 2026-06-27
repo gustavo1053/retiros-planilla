@@ -257,6 +257,10 @@ function actualizarFlotante(shId) {
 
 async function cambiarMes() {
   MES = document.getElementById('mesSelect').value;
+  // Resetear offsets de semana y sueldos al cambiar mes
+  ['sh_s1','sh_s2','sh_s3','sh_s4','sh_su1','sh_su2','sh_su3','sh_su4'].forEach(id => {
+    s(id+'_offset', '0');
+  });
   await cargarDesdeFirebase();
   renderAll();
 }
@@ -456,11 +460,8 @@ function luneSemana(mesStr, semIdx) {
                  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const m = meses.indexOf(mesNom);
   const y = parseInt(anio);
-  // Encontrar el primer lunes del mes
-  let d = new Date(y, m, 1);
-  while (d.getDay() !== 1) d.setDate(d.getDate()+1);
-  // Avanzar semIdx semanas
-  d.setDate(d.getDate() + semIdx*7);
+  // Siempre empezar desde el día 1 del mes + semIdx*7
+  const d = new Date(y, m, 1 + semIdx*7);
   return d;
 }
 
