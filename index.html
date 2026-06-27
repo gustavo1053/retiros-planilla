@@ -141,7 +141,7 @@ input.premio-monto{width:100px;font-size:12px;padding:3px 6px;border:1px solid #
   <h1>📋 CONTROL DE RETIROS</h1>
   <select class="mes-sel" id="mesSelect" onchange="cambiarMes()">
     <option value="Mayo 2026">Mayo 2026</option>
-    <option value="Junio 2026">Junio 2026</option>
+    <option value="Junio 2026" selected>Junio 2026</option>
     <option value="Julio 2026">Julio 2026</option>
     <option value="Agosto 2026">Agosto 2026</option>
     <option value="Septiembre 2026">Septiembre 2026</option>
@@ -202,7 +202,7 @@ const PERSONAL = [
 ];
 
 // ── ESTADO ──────────────────────────────────────────────────
-let MES = 'Mayo 2026';
+let MES = 'Junio 2026';
 let DATA = {};
 
 function g(k)   { return (DATA[MES] && DATA[MES][k] != null) ? DATA[MES][k] : ''; }
