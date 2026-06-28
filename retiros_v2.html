@@ -189,6 +189,21 @@ input.c.wh{color:var(--text)}
 /* Franco */
 .darkred{background:#3a0000!important;color:var(--red)!important;font-weight:700}
 
+/* Diseño A - sección inferior día */
+.dia-metrics{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.dia-metric{background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:8px 12px}
+.dia-metric-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:3px}
+.dia-metric-val{font-size:15px;font-weight:600;font-family:'Share Tech Mono',monospace}
+.dia-metric-val.red{color:var(--red)}
+.dia-metric-val.amber{color:var(--accent-m)}
+.dia-metric-val.cyan{color:var(--accent-t)}
+.dia-metric-val.green{color:var(--green)}
+.dia-inp-row{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-bottom:0.5px solid var(--border)}
+.dia-inp-row:last-child{border:none;padding-bottom:2px}
+.dia-inp-lbl{font-size:11px;color:var(--text-muted)}
+.dia-inp-wrap{display:flex;align-items:center;gap:6px}
+.dia-inp-fake{background:var(--surface2);border-radius:4px;padding:2px 8px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--accent-t);min-width:110px;text-align:right}
+
 /* Autosave */
 .autosave{position:fixed;bottom:8px;right:12px;background:var(--surface2);color:var(--green);border:1px solid var(--border);font-size:10px;padding:4px 10px;border-radius:6px;display:none;z-index:300;font-family:'Share Tech Mono',monospace}
 </style>
@@ -392,6 +407,15 @@ function recalcDia(sem, d) {
   sc(`${sem}_d${d}_totBon`, totBon);
   sc(`${sem}_d${d}_total`, total);
   sc(`${sem}_d${d}_sub`,   sub);
+  // Actualizar cards diseño A
+  const tcEl = document.getElementById(`${sem}_d${d}_total_card`);
+  const scEl = document.getElementById(`${sem}_d${d}_sub_card`);
+  const rLEl = document.getElementById(`${sem}_d${d}_retL_card`);
+  const rMEl = document.getElementById(`${sem}_d${d}_retM_card`);
+  if(tcEl) tcEl.textContent = total ? '$'+fmt(total) : '—';
+  if(scEl) scEl.textContent = sub   ? '$'+fmt(sub)   : '—';
+  if(rLEl) rLEl.textContent = retL  ? '$'+fmt(retL)  : '—';
+  if(rMEl) rMEl.textContent = retM  ? '$'+fmt(retM)  : '—';
 
   // Propagar Sub Total al banco del día siguiente
   if (sub > 0 && d < 6) {
@@ -694,41 +718,70 @@ function renderSemana(shId, titulo) {
           oninput="s('${dk}_banco_auto','0');onInp(this)"
           onchange="s('${dk}_banco_auto','0');onInp(this)"></td>
         <td></td><td></td><td></td><td></td><td></td></tr>
-      <tr class="rojo"><td></td><td>Total</td>
-        <td class="calc-r" id="${dk}_total"></td><td></td><td></td><td></td><td></td><td></td></tr>
-      <tr>
-        <td></td><td style="font-weight:700">Gasto</td>
-        <td>${inp(`${dk}_gasto`)}</td>
-        <td style="text-align:center">
-          <button class="obs-btn" data-key="${dk}_gasto_obs" data-titulo="Gasto" onclick="obsClick(this)" title="Observación">📝</button>
-          <span class="obs-preview" id="${dk}_gasto_obs_prev"></span>
-        </td>
-        <td></td><td></td><td></td><td></td>
-      </tr>
-      <tr>
-        <td></td><td style="font-weight:700">▶ Sueldos Jaz</td>
-        <td>${inp(`${dk}_sue_Jaz`)}</td><td></td><td></td><td></td><td></td><td></td>
-      </tr>
-      <tr>
-        <td></td><td style="font-weight:700">▶ Sueldos Emi</td>
-        <td>${inp(`${dk}_sue_Emi`)}</td><td></td><td></td><td></td><td></td><td></td>
-      </tr>
-      <tr>
-        <td></td><td style="font-weight:700">▶ Sueldos Gustavo</td>
-        <td>${inp(`${dk}_sue_Gustavo`)}</td><td></td><td></td><td></td><td></td><td></td>
-      </tr>
-      <tr>
-        <td></td><td style="font-weight:700">Compra Us$</td>
-        <td>${inp(`${dk}_usd`)}</td>
-        <td style="text-align:center">
-          <button class="obs-btn" data-key="${dk}_usd_obs" data-titulo="Compra Us$" onclick="obsClick(this)" title="Observación">📝</button>
-          <span class="obs-preview" id="${dk}_usd_obs_prev"></span>
-        </td>
-        <td></td><td></td><td></td><td></td>
-      </tr>
-      <tr class="rojo"><td></td><td>Sub Total</td>
-        <td class="calc-r" id="${dk}_sub"></td><td></td><td></td><td></td><td></td><td></td></tr>
-      </tbody></table></div>`;
+      </tbody></table>
+
+      <!-- DISEÑO A: métricas + inputs en lista -->
+      <div style="padding:10px 8px">
+        <div class="dia-metrics">
+          <div class="dia-metric">
+            <div class="dia-metric-lbl">Total día</div>
+            <div class="dia-metric-val cyan" id="${dk}_total_card">—</div>
+          </div>
+          <div class="dia-metric">
+            <div class="dia-metric-lbl">Sub Total</div>
+            <div class="dia-metric-val red" id="${dk}_sub_card">—</div>
+          </div>
+          <div class="dia-metric">
+            <div class="dia-metric-lbl">Retiro Lezcano</div>
+            <div class="dia-metric-val amber" id="${dk}_retL_card">—</div>
+          </div>
+          <div class="dia-metric">
+            <div class="dia-metric-lbl">Retiro Martin</div>
+            <div class="dia-metric-val amber" id="${dk}_retM_card">—</div>
+          </div>
+        </div>
+        <div class="dia-inp-row">
+          <span class="dia-inp-lbl">Pagos Fichas</span>
+          <div class="dia-inp-wrap">
+            <div class="dia-inp-fake">${g(`${dk}_pagF`)?fmt(nv(g(`${dk}_pagF`))):'—'}</div>
+            ${inp(`${dk}_pagF`,'','pagF')}
+          </div>
+        </div>
+        <div class="dia-inp-row">
+          <span class="dia-inp-lbl">Banco</span>
+          <input class="c" id="${dk}_banco" value="${g(`${dk}_banco`)}"
+            style="background:${g(`${dk}_banco_auto`)==='1'?'rgba(56,189,248,.08)':'transparent'};width:120px;text-align:right;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--accent-t)"
+            oninput="s('${dk}_banco_auto','0');onInp(this)"
+            onchange="s('${dk}_banco_auto','0');onInp(this)">
+        </div>
+        <div class="dia-inp-row">
+          <span class="dia-inp-lbl">Gasto</span>
+          <div class="dia-inp-wrap">
+            ${inp(`${dk}_gasto`)}
+            <button class="obs-btn" data-key="${dk}_gasto_obs" data-titulo="Gasto" onclick="obsClick(this)">📝</button>
+          </div>
+        </div>
+        <div class="dia-inp-row">
+          <span class="dia-inp-lbl">Sueldos Jaz</span>
+          ${inp(`${dk}_sue_Jaz`)}
+        </div>
+        <div class="dia-inp-row">
+          <span class="dia-inp-lbl">Sueldos Emi</span>
+          ${inp(`${dk}_sue_Emi`)}
+        </div>
+        <div class="dia-inp-row">
+          <span class="dia-inp-lbl">Sueldos Gustavo</span>
+          ${inp(`${dk}_sue_Gustavo`)}
+        </div>
+        <div class="dia-inp-row">
+          <span class="dia-inp-lbl">Compra Us$</span>
+          <div class="dia-inp-wrap">
+            ${inp(`${dk}_usd`)}
+            <button class="obs-btn" data-key="${dk}_usd_obs" data-titulo="Compra Us$" onclick="obsClick(this)">📝</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
   }
 
   // Resumen por panel
