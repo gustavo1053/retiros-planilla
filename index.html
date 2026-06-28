@@ -93,16 +93,16 @@ input.c.wh{color:#fff}
 .obs-cancel:hover{background:#888}
 .obs-preview{font-size:10px;color:#555;font-style:italic;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle}
 .autosave{position:fixed;bottom:8px;right:12px;background:#333;color:#fff;font-size:10px;padding:3px 8px;border-radius:3px;display:none;z-index:300}
-.res-flo{position:fixed;top:78px;right:14px;background:#fff;border:1px solid #ddd;border-radius:10px;padding:14px 18px;z-index:150;box-shadow:0 4px 20px rgba(0,0,0,.13);min-width:230px;display:none;font-family:Calibri,Arial,sans-serif}
+.res-flo{position:fixed;top:78px;right:14px;background:#fff;border:1px solid #ddd;border-radius:8px;padding:8px 12px;z-index:150;box-shadow:0 2px 10px rgba(0,0,0,.1);min-width:180px;max-width:260px;display:none;font-family:Calibri,Arial,sans-serif;font-size:10px}
 .res-flo.visible{display:block}
-.res-flo-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#999;margin-bottom:10px}
-.res-flo-paneles{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px}
-.res-flo-p{font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px}
-.res-flo-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #f0f0f0}
+.res-flo-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#999;margin-bottom:6px}
+.res-flo-paneles{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px}
+.res-flo-p{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px}
+.res-flo-row{display:flex;justify-content:space-between;align-items:center;padding:2px 0;border-bottom:1px solid #f0f0f0}
 .res-flo-row:last-child{border:none}
-.res-flo-lbl{font-size:13px;color:#555}
-.res-flo-val{font-size:17px;font-weight:700;color:#c00}
-.res-flo-val.gasto{color:#c55a11}
+.res-flo-lbl{font-size:10px;color:#555}
+.res-flo-val{font-size:12px;font-weight:700;color:#c00}
+.res-flo-val.gasto{color:#c55a11;font-size:12px}
 /* Panel resumen flotante */
 .res-flotante{position:fixed;top:75px;right:16px;background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px 16px;z-index:150;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:220px;display:none}
 .res-flotante.visible{display:block}
@@ -578,9 +578,9 @@ function renderSemana(shId, titulo) {
         <th style="width:120px">Mañana</th>
         <th style="width:120px">Tarde</th>
         <th style="width:120px">Noche</th>
-        <th style="width:120px;background:#ffe0b2">Total</th>
         <th style="width:110px;background:#e8f5e9">Sueldos</th>
         <th style="width:110px;background:#e3f2fd">Bonificación</th>
+        <th style="width:120px;background:#ffe0b2">Total</th>
       </tr></thead>
       <tbody>`;
 
@@ -591,9 +591,9 @@ function renderSemana(shId, titulo) {
         <td>${inp(`${dk}_p${pi}_m`)}</td>
         <td>${inp(`${dk}_p${pi}_t`)}</td>
         <td>${inp(`${dk}_p${pi}_n`)}</td>
-        <td class="calc" style="background:#fff8f0" id="${dk}_p${pi}_tot"></td>
         <td style="background:#f1f8f1">${inp(`${dk}_p${pi}_sue`)}</td>
         <td style="background:#e8f4fd">${inp(`${dk}_p${pi}_bon`)}</td>
+        <td class="calc" style="background:#fff8f0" id="${dk}_p${pi}_tot"></td>
       </tr>`;
     });
 
@@ -603,9 +603,9 @@ function renderSemana(shId, titulo) {
         <td class="calc-r" id="${dk}_totM"></td>
         <td class="calc-r" id="${dk}_totT"></td>
         <td class="calc-r" id="${dk}_totN"></td>
-        <td class="calc-r" id="${dk}_totDia"></td>
         <td class="calc-r" id="${dk}_totSue"></td>
         <td class="calc-r" id="${dk}_totBon"></td>
+        <td class="calc-r" id="${dk}_totDia"></td>
       </tr>
       <tr>
         <td></td><td style="font-weight:700">Lezcano Retiro</td>
