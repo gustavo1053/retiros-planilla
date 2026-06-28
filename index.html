@@ -309,10 +309,13 @@ function recalcDia(sem, d) {
   const retL  = nv(g(`${sem}_d${d}_retL`));
   const retM  = nv(g(`${sem}_d${d}_retM`));
   const pagF  = nv(g(`${sem}_d${d}_pagF`));
-  const gasto = nv(g(`${sem}_d${d}_gasto`));
-  const usd   = nv(g(`${sem}_d${d}_usd`));
-  const total = totM + totT + totN + banco;
-  const sub   = total - retL - retM - pagF - gasto - usd;
+  const gasto  = nv(g(`${sem}_d${d}_gasto`));
+  const usd    = nv(g(`${sem}_d${d}_usd`));
+  const sueJaz = nv(g(`${sem}_d${d}_sue_Jaz`));
+  const sueEmi = nv(g(`${sem}_d${d}_sue_Emi`));
+  const sueGus = nv(g(`${sem}_d${d}_sue_Gustavo`));
+  const total  = totM + totT + totN + banco;
+  const sub    = total - retL - retM - pagF - gasto - usd - sueJaz - sueEmi - sueGus;
   sc(`${sem}_d${d}_totM`, totM);
   sc(`${sem}_d${d}_totT`, totT);
   sc(`${sem}_d${d}_totN`, totN);
@@ -643,6 +646,18 @@ function renderSemana(shId, titulo) {
           <span class="obs-preview" id="${dk}_gasto_obs_prev"></span>
         </td>
         <td></td><td></td><td></td><td></td>
+      </tr>
+      <tr>
+        <td></td><td style="font-weight:700">▶ Sueldos Jaz</td>
+        <td>${inp(`${dk}_sue_Jaz`)}</td><td></td><td></td><td></td><td></td><td></td>
+      </tr>
+      <tr>
+        <td></td><td style="font-weight:700">▶ Sueldos Emi</td>
+        <td>${inp(`${dk}_sue_Emi`)}</td><td></td><td></td><td></td><td></td><td></td>
+      </tr>
+      <tr>
+        <td></td><td style="font-weight:700">▶ Sueldos Gustavo</td>
+        <td>${inp(`${dk}_sue_Gustavo`)}</td><td></td><td></td><td></td><td></td><td></td>
       </tr>
       <tr>
         <td></td><td style="font-weight:700">Compra Us$</td>
