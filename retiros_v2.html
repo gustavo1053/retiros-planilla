@@ -978,30 +978,44 @@ const PANEL_TO_AG = {
 let TURNOS_CACHE = {};
 
 async function cargarTurnosData() {
-  // Lee de retiros_sueldos — colección que sincroniza la planilla unificada
   if (!window._fbReady || !window._db) return;
   try {
-    // Obtener todas las fechas disponibles en retiros_sueldos
-    // Usamos una query simple: traer los últimos 35 documentos (5 semanas)
-    const { collection, getDocs, query, orderBy, limit } =
-      await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-    const q = query(
-      collection(window._db, 'retiros_sueldos'),
-      orderBy('fecha', 'desc'),
-      limit(35)
-    );
-    const snap = await getDocs(q);
-    snap.forEach(docSnap => {
-      const data = docSnap.data();
-      const fecha = data.fecha;
-      if (data.agentes) {
-        Object.entries(data.agentes).forEach(([agKey, turnos]) => {
-          if (!TURNOS_CACHE[agKey]) TURNOS_CACHE[agKey] = {};
-          TURNOS_CACHE[agKey][fecha] = turnos;
-        });
-      }
-    });
-    console.log('Sueldos cargados desde retiros_sueldos:', Object.keys(TURNOS_CACHE));
+    // Traer los docs de retiros_sueldos directamente por fecha
+    // Calcular rango de fechas del mes actual
+    const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const [mesNom, anio] = MES.split(' ');
+    const m = meses.indexOf(mesNom);
+    const y = parseInt(anio);
+    const fechas = [];
+    const diasEnMes = new Date(y, m+1, 0).getDate();
+    for (let d=1; d<=diasEnMes; d++) {
+      const f = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      fechas.push(f);
+    }
+    // También incluir últimos días del mes anterior (para semana 1)
+    for (let d=1; d<=7; d++) {
+      const dt = new Date(y, m, d-7);
+      const f = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+      fechas.push(f);
+    }
+
+    // Leer cada fecha de Firebase
+    await Promise.all(fechas.map(async fecha => {
+      try {
+        const snap = await window._getDoc(window._doc(window._db, 'retiros_sueldos', fecha));
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.agentes) {
+            Object.entries(data.agentes).forEach(([agKey, turnos]) => {
+              if (!TURNOS_CACHE[agKey]) TURNOS_CACHE[agKey] = {};
+              TURNOS_CACHE[agKey][fecha] = turnos;
+            });
+          }
+        }
+      } catch(e) {}
+    }));
+    console.log('retiros_sueldos cargado. Agentes:', Object.keys(TURNOS_CACHE));
   } catch(e) {
     console.warn('Error cargando retiros_sueldos:', e);
   }
