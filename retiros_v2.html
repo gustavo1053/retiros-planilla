@@ -975,9 +975,9 @@ const PANEL_TO_AG = {
 };
 
 // Caché de turnosData
-let TURNOS_CACHE = {};
+window.window.TURNOS_CACHE = {};
 
-async function cargarTurnosData() {
+window.cargarTurnosData = async function cargarTurnosData() {
   if (!window._fbReady || !window._db) return;
   try {
     // Traer los docs de retiros_sueldos directamente por fecha
@@ -1008,8 +1008,8 @@ async function cargarTurnosData() {
           const data = snap.data();
           if (data.agentes) {
             Object.entries(data.agentes).forEach(([agKey, turnos]) => {
-              if (!TURNOS_CACHE[agKey]) TURNOS_CACHE[agKey] = {};
-              TURNOS_CACHE[agKey][fecha] = turnos;
+              if (!window.TURNOS_CACHE[agKey]) window.window.TURNOS_CACHE[agKey] = {};
+              window.TURNOS_CACHE[agKey][fecha] = turnos;
             });
           }
         }
@@ -1021,11 +1021,11 @@ async function cargarTurnosData() {
   }
 }
 
-function getSueldo(panel, fecha) {
+window.getSueldo = function getSueldo(panel, fecha) {
   // fecha formato YYYY-MM-DD
   const agKey = PANEL_TO_AG[panel];
-  if (!agKey || !TURNOS_CACHE[agKey]) return 0;
-  const diaData = TURNOS_CACHE[agKey][fecha];
+  if (!agKey || !window.TURNOS_CACHE[agKey]) return 0;
+  const diaData = window.TURNOS_CACHE[agKey][fecha];
   if (!diaData) return 0;
   // Sumar sueldo de los 3 turnos
   let total = 0;
@@ -1037,10 +1037,10 @@ function getSueldo(panel, fecha) {
   return total;
 }
 
-function getBonif(panel, fecha) {
+window.getBonif = function getBonif(panel, fecha) {
   const agKey = PANEL_TO_AG[panel];
-  if (!agKey || !TURNOS_CACHE[agKey]) return 0;
-  const diaData = TURNOS_CACHE[agKey][fecha];
+  if (!agKey || !window.TURNOS_CACHE[agKey]) return 0;
+  const diaData = window.TURNOS_CACHE[agKey][fecha];
   if (!diaData) return 0;
   let total = 0;
   ['manana','tarde','noche'].forEach(t => {
@@ -1051,7 +1051,7 @@ function getBonif(panel, fecha) {
   return total;
 }
 
-async function completarSueldosBonif(shId) {
+window.completarSueldosBonif = async function completarSueldosBonif(shId) {
   await cargarTurnosData();
   const semIdx = ['sh_s1','sh_s2','sh_s3','sh_s4'].indexOf(shId);
   const offset  = parseInt(g(shId+'_offset')) || 0;
@@ -1643,9 +1643,6 @@ function renderAll() {
 
 // ── INIT ─────────────────────────────────────────────────────
 // Exponer funciones globalmente
-window.cargarTurnosData = cargarTurnosData;
-window.completarSueldosBonif = completarSueldosBonif;
-window.TURNOS_CACHE = TURNOS_CACHE;
 
 document.addEventListener('DOMContentLoaded', async function() {
   const ov = document.getElementById('obsOverlay');
