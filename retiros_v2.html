@@ -630,13 +630,17 @@ function renderSemana(shId, titulo) {
   // Titulo real
   const tit = titulo || `${MES} — Semana ${semIdx+1}`;
 
-  let h = `<div class="shdr" style="display:flex;align-items:center;gap:10px">
+  let h = `<div class="shdr" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <span>${tit}</span>
     <div class="period-ctrl">
       <button class="arr-btn" onclick="moveSem('${shId}',-1)" title="Semana anterior">&#8592;</button>
       <span class="period-lbl" id="${shId}_periodo_lbl">${periodo}</span>
       <button class="arr-btn" onclick="moveSem('${shId}',1)" title="Semana siguiente">&#8594;</button>
     </div>
+    <button onclick="completarSueldosBonif('${shId}')"
+      style="margin-left:auto;background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;padding:4px 12px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.5px">
+      ⬇ Importar Sueldos
+    </button>
   </div>`;
 
   for (let d=0; d<7; d++) {
@@ -958,6 +962,110 @@ function renderSueldo(shId, titulo) {
 // ── FIREBASE HELPERS ─────────────────────────────────────────
 function fbDoc(mes) {
   return window._doc(window._db, 'retiros_data', mes.replace(/ /g,'_'));
+}
+
+// ── MAPEO PANELES → AGENTES TURNOSDATA ───────────────────────
+const PANEL_TO_AG = {
+  'Age 18': 'AG_18',
+  'Age 19': 'AG_19',
+  'Age 21': 'AG_21',
+  'Age 22': 'AG_22',
+  'Age 23': 'AG_23',
+  'Age 24': 'AG_24',
+  'Age 25': 'AG_25',
+  'Sm':     'SIEMPRE_MONO',
+};
+
+// Caché de turnosData
+let TURNOS_CACHE = {};
+
+async function cargarTurnosData() {
+  try {
+    const DOCS = ['AG_18','AG_19','AG_21','AG_22','AG_23','AG_24','AG_25','SIEMPRE_MONO'];
+    // Primero intentar localStorage
+    const raw = localStorage.getItem('turnosData');
+    if (raw) TURNOS_CACHE = JSON.parse(raw);
+    // Luego Firebase
+    if (window._fbReady && window._db) {
+      await Promise.all(DOCS.map(async agDoc => {
+        try {
+          const snap = await window._getDoc(window._doc(window._db, 'turnosData', agDoc));
+          if (snap.exists()) {
+            const data = snap.data();
+            Object.keys(data).forEach(fecha => {
+              if (!TURNOS_CACHE[agDoc]) TURNOS_CACHE[agDoc] = {};
+              TURNOS_CACHE[agDoc][fecha] = data[fecha];
+            });
+          }
+        } catch(e) {}
+      }));
+    }
+  } catch(e) { console.warn('Error cargando turnosData:', e); }
+}
+
+function getSueldo(panel, fecha) {
+  // fecha formato YYYY-MM-DD
+  const agKey = PANEL_TO_AG[panel];
+  if (!agKey || !TURNOS_CACHE[agKey]) return 0;
+  const diaData = TURNOS_CACHE[agKey][fecha];
+  if (!diaData) return 0;
+  // Sumar sueldo de los 3 turnos
+  let total = 0;
+  ['manana','tarde','noche'].forEach(t => {
+    if (diaData[t] && diaData[t].sueldo) {
+      total += parseFloat(diaData[t].sueldo) || 0;
+    }
+  });
+  return total;
+}
+
+function getBonif(panel, fecha) {
+  const agKey = PANEL_TO_AG[panel];
+  if (!agKey || !TURNOS_CACHE[agKey]) return 0;
+  const diaData = TURNOS_CACHE[agKey][fecha];
+  if (!diaData) return 0;
+  let total = 0;
+  ['manana','tarde','noche'].forEach(t => {
+    if (diaData[t] && diaData[t].bonos) {
+      total += parseFloat(diaData[t].bonos) || 0;
+    }
+  });
+  return total;
+}
+
+async function completarSueldosBonif(shId) {
+  await cargarTurnosData();
+  const semIdx = ['sh_s1','sh_s2','sh_s3','sh_s4'].indexOf(shId);
+  const offset  = parseInt(g(shId+'_offset')) || 0;
+  const lunes   = luneSemana(MES, semIdx + offset);
+
+  for (let d = 0; d < 7; d++) {
+    const dt = new Date(lunes);
+    dt.setDate(lunes.getDate() + d);
+    const pad = n => String(n).padStart(2,'0');
+    const fecha = `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`;
+    const dk = `${shId}_d${d}`;
+
+    PANELES.forEach((panel, pi) => {
+      const sue = getSueldo(panel, fecha);
+      const bon = getBonif(panel, fecha);
+
+      if (sue > 0) {
+        s(`${dk}_p${pi}_sue`, Math.round(sue).toString());
+        const el = document.getElementById(`${dk}_p${pi}_sue`);
+        if (el) { el.value = Math.round(sue).toLocaleString('es-AR'); el.style.background='rgba(52,211,153,.08)'; }
+      }
+      if (bon > 0) {
+        s(`${dk}_p${pi}_bon`, Math.round(bon).toString());
+        const el = document.getElementById(`${dk}_p${pi}_bon`);
+        if (el) { el.value = Math.round(bon).toLocaleString('es-AR'); el.style.background='rgba(56,189,248,.08)'; }
+      }
+    });
+    // Recalcular día
+    recalcDia(shId, d);
+  }
+  recalcSemRes(shId);
+  autoSave();
 }
 
 // ── GUARDAR / AUTOSAVE ───────────────────────────────────────
