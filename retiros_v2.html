@@ -978,31 +978,33 @@ const PANEL_TO_AG = {
 let TURNOS_CACHE = {};
 
 async function cargarTurnosData() {
+  // Lee de retiros_sueldos — colección que sincroniza la planilla unificada
+  if (!window._fbReady || !window._db) return;
   try {
-    // Leer desde localStorage (planilla-liart lo guarda ahí)
-    const raw = localStorage.getItem('turnosData');
-    if (raw) {
-      TURNOS_CACHE = JSON.parse(raw);
-      console.log('turnosData desde localStorage:', Object.keys(TURNOS_CACHE));
-      return;
-    }
-    // Si no hay localStorage, intentar Firebase directamente
-    const DOCS = ['AG 18','AG 19','AG 21','AG 22','AG 23','AG 24','AG 25','SIEMPRE MONO'];
-    if (window._fbReady && window._db) {
-      await Promise.all(DOCS.map(async agDoc => {
-        try {
-          const snap = await window._getDoc(window._doc(window._db, 'turnosData', agDoc));
-          if (snap.exists()) {
-            const data = snap.data();
-            if (!TURNOS_CACHE[agDoc]) TURNOS_CACHE[agDoc] = {};
-            Object.keys(data).forEach(fecha => {
-              TURNOS_CACHE[agDoc][fecha] = data[fecha];
-            });
-          }
-        } catch(e) { console.warn('Error doc', agDoc, e); }
-      }));
-    }
-  } catch(e) { console.warn('Error cargando turnosData:', e); }
+    // Obtener todas las fechas disponibles en retiros_sueldos
+    // Usamos una query simple: traer los últimos 35 documentos (5 semanas)
+    const { collection, getDocs, query, orderBy, limit } =
+      await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const q = query(
+      collection(window._db, 'retiros_sueldos'),
+      orderBy('fecha', 'desc'),
+      limit(35)
+    );
+    const snap = await getDocs(q);
+    snap.forEach(docSnap => {
+      const data = docSnap.data();
+      const fecha = data.fecha;
+      if (data.agentes) {
+        Object.entries(data.agentes).forEach(([agKey, turnos]) => {
+          if (!TURNOS_CACHE[agKey]) TURNOS_CACHE[agKey] = {};
+          TURNOS_CACHE[agKey][fecha] = turnos;
+        });
+      }
+    });
+    console.log('Sueldos cargados desde retiros_sueldos:', Object.keys(TURNOS_CACHE));
+  } catch(e) {
+    console.warn('Error cargando retiros_sueldos:', e);
+  }
 }
 
 function getSueldo(panel, fecha) {
