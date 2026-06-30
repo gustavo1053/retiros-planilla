@@ -1,0 +1,1787 @@
+<!DOCTYPE html>
+<!-- deploy 2026-06-08T23:57:48.099481 -->
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Retiros">
+<meta name="theme-color" content="#1f3864">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<title>Control de Retiros 2026</title>
+<script type="module">
+  import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  const firebaseConfig = {
+    apiKey:            "AIzaSyCGRYyo9EmR0NB3TImzZIP4SuDpDwwMgVc",
+    authDomain:        "planilla-perdidas---ganancias.firebaseapp.com",
+    projectId:         "planilla-perdidas---ganancias",
+    storageBucket:     "planilla-perdidas---ganancias.firebasestorage.app",
+    messagingSenderId: "179047310261",
+    appId:             "1:179047310261:web:2e5ad044d98751985d2ffc"
+  };
+  const app = initializeApp(firebaseConfig, 'retiros');
+  const db  = getFirestore(app);
+  window._db     = db;
+  window._doc    = doc;
+  window._getDoc = getDoc;
+  window._setDoc = setDoc;
+  window._fbReady = true;
+
+  // Cargar sueldos desde retiros_sueldos y completar planilla
+  async function cargarYCompletarSueldos(shId) {
+    try {
+      const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                     'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      const MES = window._MES || 'Junio 2026';
+      const [mesNom, anio] = MES.split(' ');
+      const m = meses.indexOf(mesNom);
+      const y = parseInt(anio);
+      const diasEnMes = new Date(y, m+1, 0).getDate();
+      const fechas = [];
+      for (let d=1; d<=diasEnMes; d++) {
+        fechas.push(`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
+      }
+      // Leer todas las fechas del mes
+      const cache = {};
+      await Promise.all(fechas.map(async fecha => {
+        try {
+          const snap = await getDoc(doc(db, 'retiros_sueldos', fecha));
+          if (snap.exists() && snap.data().agentes) {
+            Object.entries(snap.data().agentes).forEach(([agKey, turnos]) => {
+              if (!cache[agKey]) cache[agKey] = {};
+              cache[agKey][fecha] = turnos;
+            });
+          }
+        } catch(e) {}
+      }));
+      window._sueldosCache = cache;
+      // Disparar evento para que el script principal complete los inputs
+      window.dispatchEvent(new CustomEvent('sueldosCargados', { detail: { shId } }));
+    } catch(e) {
+      console.warn('Error cargando sueldos:', e);
+    }
+  }
+
+  window._cargarYCompletarSueldos = cargarYCompletarSueldos;
+  window._fbReady = true;
+  window.dispatchEvent(new Event('fbReady'));
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=Share+Tech+Mono&display=swap');
+
+:root {
+  --bg: #0a0c10;
+  --surface: #12151c;
+  --surface2: #1a1e28;
+  --border: #252a38;
+  --accent-m: #f59e0b;
+  --accent-t: #38bdf8;
+  --accent-n: #a78bfa;
+  --text: #e8eaf0;
+  --text-muted: #6b7280;
+  --text-dim: #9ca3af;
+  --green: #34d399;
+  --red: #f87171;
+  --radius: 10px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;min-height:100vh}
+
+/* HEADER */
+.app-header{background:linear-gradient(135deg,#0d1117 0%,#12151c 100%);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:200;flex-wrap:wrap;backdrop-filter:blur(12px)}
+.app-header h1{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:3px;background:linear-gradient(90deg,var(--accent-m),var(--accent-t));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.mes-sel{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;padding:5px 10px;border-radius:6px;cursor:pointer;outline:none}
+.mes-sel:focus{border-color:var(--accent-m)}
+.btn-g{border:none;padding:6px 14px;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;letter-spacing:.5px}
+.btn-save{background:linear-gradient(135deg,#059669,#047857);color:#fff;box-shadow:0 2px 8px rgba(5,150,105,.3)}
+.btn-save:hover{background:linear-gradient(135deg,#047857,#065f46)}
+.btn-exp{background:linear-gradient(135deg,#c55a11,#9a3d0a);color:#fff}
+.saved-ind{font-size:11px;color:var(--green);display:none}
+
+/* TABS */
+.sheet-tabs{display:flex;gap:0;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;position:sticky;top:52px;z-index:190;scrollbar-width:none}
+.sheet-tabs::-webkit-scrollbar{display:none}
+.stab{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1.5px;padding:10px 18px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap}
+.stab:hover{color:var(--text-dim);background:var(--surface2)}
+.stab.active{color:var(--accent-m);border-bottom-color:var(--accent-m);background:var(--bg)}
+
+/* SHEETS */
+.sheet{display:none;padding:20px 24px;animation:fadeIn .2s ease}
+.sheet.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* TABLA */
+table{width:100%;border-collapse:collapse;font-size:12px}
+td,th{border:1px solid var(--border);padding:4px 8px;white-space:nowrap;vertical-align:middle}
+thead th{background:var(--surface2);color:var(--text-dim);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;text-align:center;border-color:var(--border)}
+tbody td{background:var(--surface);border-color:var(--border);color:var(--text)}
+tbody tr:hover td{background:var(--surface2)}
+
+/* Panel colors - manteniendo colores originales pero con borde luminoso */
+.p18{background:#2a2600!important;color:#FFFF00!important;font-weight:700;border-left:3px solid #FFFF00!important}
+.p19{background:#2a1800!important;color:#FFC000!important;font-weight:700;border-left:3px solid #FFC000!important}
+.p21{background:#2a0000!important;color:#ff6b6b!important;font-weight:700;border-left:3px solid #ff6b6b!important}
+.p22{background:#002a0e!important;color:#00e676!important;font-weight:700;border-left:3px solid #00e676!important}
+.p23{background:#001a2a!important;color:#40c4ff!important;font-weight:700;border-left:3px solid #40c4ff!important}
+.p24{background:#1a002a!important;color:#ce93d8!important;font-weight:700;border-left:3px solid #ce93d8!important}
+.p25{background:#002a2a!important;color:#00e5ff!important;font-weight:700;border-left:3px solid #00e5ff!important}
+.psm{background:#1a1a1a!important;color:#aaa!important;font-weight:700;border-left:3px solid #aaa!important}
+
+/* Filas especiales */
+.rojo{background:#3a0000!important;color:var(--red)!important;font-weight:700}
+.calc{text-align:right;font-weight:700;background:var(--surface2)!important;color:var(--accent-m)!important;font-family:'Share Tech Mono',monospace}
+.calc-r{background:#3a0000!important;color:var(--red)!important;font-weight:700;text-align:right;font-family:'Share Tech Mono',monospace}
+
+/* Inputs */
+input.c{border:none;background:transparent;width:100%;font-family:'Share Tech Mono',monospace;font-size:12px;text-align:right;padding:0 2px;color:var(--text);outline:none}
+input.c:focus{background:rgba(56,189,248,.08);border-bottom:1px solid var(--accent-t)}
+input.c.lft{text-align:left;font-family:'DM Sans',sans-serif}
+input.c.wh{color:var(--text)}
+
+/* SHDR */
+.shdr{background:linear-gradient(90deg,var(--surface2),var(--surface));border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:2px;padding:8px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+
+/* Bloques de día */
+.blk{border:1px solid var(--border);border-radius:10px;margin-bottom:10px;background:var(--surface);overflow:hidden}
+.blkhdr{background:var(--surface2);font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1.5px;padding:6px 12px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;color:var(--text-dim)}
+
+/* Flechitas periodo */
+.period-ctrl{display:flex;align-items:center;gap:4px}
+.arr-btn{background:var(--surface2);color:var(--text-dim);border:1px solid var(--border);border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
+.arr-btn:hover{border-color:var(--accent-t);color:var(--accent-t)}
+.period-lbl{font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--accent-t);min-width:140px;text-align:center}
+.day-ctrl{display:flex;align-items:center;gap:3px}
+.day-arr{background:var(--surface2);border:1px solid var(--border);border-radius:3px;width:18px;height:18px;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;color:var(--text-muted)}
+.day-arr:hover{border-color:var(--accent-t);color:var(--accent-t)}
+.day-lbl{font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--accent-t);min-width:50px;text-align:center;padding:1px 4px;border:1px solid var(--border);border-radius:3px;background:var(--surface2)}
+
+/* Badges turnos */
+.sel-tipo{border:1px solid var(--border);border-radius:4px;font-size:10px;font-family:'DM Sans',sans-serif;padding:2px 4px;background:var(--surface2);cursor:pointer;width:80px;color:var(--text)}
+.tipo-D{background:#1a1500!important;color:var(--accent-m)!important}
+.tipo-S{background:#001a0a!important;color:var(--green)!important}
+.tipo-Q{background:#00101a!important;color:var(--accent-t)!important}
+.tipo-F{background:#12001a!important;color:var(--accent-n)!important}
+
+/* Resumen panel */
+.res-flo{position:fixed;top:78px;right:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 24px;z-index:150;box-shadow:0 4px 20px rgba(0,0,0,.4);min-width:360px;max-width:520px;display:none;font-family:'DM Sans',sans-serif}
+.res-flo.visible{display:block}
+.res-flo-title{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:var(--text-muted);margin-bottom:10px}
+.res-flo-paneles{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.res-flo-p{font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px}
+.res-flo-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)}
+.res-flo-row:last-child{border:none}
+.res-flo-lbl{font-size:12px;color:var(--text-muted)}
+.res-flo-val{font-family:'Share Tech Mono',monospace;font-size:16px;font-weight:700;color:var(--red)}
+.res-flo-val.gasto{color:var(--accent-m)}
+
+/* Modal obs */
+.obs-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center}
+.obs-overlay.open{display:flex}
+.obs-modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.5);width:480px;max-width:95vw;overflow:hidden}
+.obs-modal-hdr{background:var(--surface2);color:var(--text);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;border-bottom:1px solid var(--border)}
+.obs-modal-close{background:none;border:none;color:var(--text-muted);font-size:18px;cursor:pointer}
+.obs-modal-close:hover{color:var(--red)}
+.obs-modal-body{padding:14px}
+.obs-textarea{width:100%;height:160px;font-size:13px;font-family:'DM Sans',sans-serif;border:1px solid var(--border);border-radius:6px;padding:8px;background:var(--surface2);color:var(--text);resize:vertical;outline:none}
+.obs-textarea:focus{border-color:var(--accent-t)}
+.obs-modal-footer{padding:8px 14px;background:var(--surface2);display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--border)}
+.obs-ok{background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;padding:6px 16px;border-radius:6px;font-weight:600;cursor:pointer}
+.obs-cancel{background:var(--surface);color:var(--text-muted);border:1px solid var(--border);padding:6px 12px;border-radius:6px;cursor:pointer}
+.obs-btn{background:none;border:none;cursor:pointer;font-size:12px;padding:0 3px;color:var(--text-muted)}
+.obs-btn:hover{color:var(--accent-t)}
+.obs-preview{font-size:10px;color:var(--accent-t);font-style:italic;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle}
+
+/* Sueldos */
+.total-row{background:var(--surface2)!important}
+.feriado{background:#2a000a!important;color:var(--red)!important}
+.fer-hdr{background:#3a0000!important;color:var(--red)!important}
+.sel-tipo-wrap{display:flex;align-items:center;justify-content:center}
+.section-header{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;margin-bottom:6px}
+
+/* Productividad */
+.kb-bg{background:var(--surface)!important}
+.kb-card{background:var(--surface2)!important;border-color:var(--border)!important;box-shadow:none!important}
+.kb-name{color:var(--text)!important}
+.kb-turno{color:var(--text-muted)!important}
+.kb-crit-blank{background:var(--surface)!important;color:var(--text-muted)!important;border:1px solid var(--border)!important}
+.kb-crit-blank:hover{background:var(--surface2)!important;color:var(--accent-t)!important;border-color:var(--accent-t)!important}
+.kb-crit-done{background:rgba(52,211,153,.1)!important;color:var(--green)!important;border:1px solid rgba(52,211,153,.3)!important}
+.kb-footer{border-top-color:var(--border)!important}
+.kb-premio-on{color:var(--green)!important}
+.kb-premio-off{color:var(--text-muted)!important}
+.kb-rank-card{background:var(--surface2)!important;border-color:var(--border)!important;box-shadow:none!important}
+.kb-rname{color:var(--text)!important}
+.kb-rsub{color:var(--text-muted)!important}
+.kb-ramt{color:var(--green)!important}
+
+/* Direcciones */
+.dir-card,.agent-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px}
+.dir-name{color:var(--text);font-weight:600}
+.dir-info{color:var(--text-muted);font-size:11px;line-height:1.6}
+
+/* Franco */
+.darkred{background:#3a0000!important;color:var(--red)!important;font-weight:700}
+
+/* Diseño A - sección inferior día */
+.dia-metrics{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.dia-metric{background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:8px 12px}
+.dia-metric-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:3px}
+.dia-metric-val{font-size:15px;font-weight:600;font-family:'Share Tech Mono',monospace}
+.dia-metric-val.red{color:var(--red)}
+.dia-metric-val.amber{color:var(--accent-m)}
+.dia-metric-val.cyan{color:var(--accent-t)}
+.dia-metric-val.green{color:var(--green)}
+.dia-inp-row{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-bottom:0.5px solid var(--border)}
+.dia-inp-row:last-child{border:none;padding-bottom:2px}
+.dia-inp-lbl{font-size:11px;color:var(--text-muted)}
+.dia-inp-wrap{display:flex;align-items:center;gap:6px}
+.dia-inp-fake{background:var(--surface2);border-radius:4px;padding:2px 8px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--accent-t);min-width:110px;text-align:right}
+
+/* Autosave */
+.autosave{position:fixed;bottom:8px;right:12px;background:var(--surface2);color:var(--green);border:1px solid var(--border);font-size:10px;padding:4px 10px;border-radius:6px;display:none;z-index:300;font-family:'Share Tech Mono',monospace}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>📋 CONTROL DE RETIROS</h1>
+  <select class="mes-sel" id="mesSelect" onchange="cambiarMes()">
+    <option value="Mayo 2026">Mayo 2026</option>
+    <option value="Junio 2026" selected>Junio 2026</option>
+    <option value="Julio 2026">Julio 2026</option>
+    <option value="Agosto 2026">Agosto 2026</option>
+    <option value="Septiembre 2026">Septiembre 2026</option>
+    <option value="Octubre 2026">Octubre 2026</option>
+    <option value="Noviembre 2026">Noviembre 2026</option>
+    <option value="Diciembre 2026">Diciembre 2026</option>
+  </select>
+  <button class="btn-g btn-save" onclick="guardar()">💾 Guardar</button>
+  <button class="btn-g btn-exp" onclick="exportarCSV()">📥 Exportar CSV</button>
+  <span class="saved-ind" id="savedInd">✓ Guardado</span>
+</div>
+
+<div class="sheet-tabs">
+  <div class="stab active" onclick="showSheet('sh_s1',this)">Semana 1</div>
+  <div class="stab" onclick="showSheet('sh_s2',this)">Semana 2</div>
+  <div class="stab" onclick="showSheet('sh_s3',this)">Semana 3</div>
+  <div class="stab" onclick="showSheet('sh_s4',this)">Semana 4</div>
+  <div class="stab" onclick="showSheet('sh_carga',this)">Carga Fi</div>
+  <div class="stab" onclick="showSheet('sh_su1',this)">Sueldos 1</div>
+  <div class="stab" onclick="showSheet('sh_su2',this)">Sueldos 2</div>
+  <div class="stab" onclick="showSheet('sh_su3',this)">Sueldos 3</div>
+  <div class="stab" onclick="showSheet('sh_su4',this)">Sueldos 4</div>
+  <div class="stab" onclick="showSheet('sh_dir',this)">Direcciones</div>
+  <div class="stab" onclick="showSheet('sh_fra',this)">Francos</div>
+  <div class="stab" onclick="showSheet('sh_prod',this)">🏆 Productividad</div>
+</div>
+
+<div id="sh_s1"    class="sheet active"></div>
+<div id="sh_s2"    class="sheet"></div>
+<div id="sh_s3"    class="sheet"></div>
+<div id="sh_s4"    class="sheet"></div>
+<div id="sh_carga" class="sheet"></div>
+<div id="sh_su1"   class="sheet"></div>
+<div id="sh_su2"   class="sheet"></div>
+<div id="sh_su3"   class="sheet"></div>
+<div id="sh_su4"   class="sheet"></div>
+<div id="sh_dir"   class="sheet"></div>
+<div id="sh_fra"   class="sheet"></div>
+<div id="sh_prod"  class="sheet"></div>
+
+<div class="autosave" id="asMsg">Guardando...</div>
+
+<script>
+// ── CONSTANTES ──────────────────────────────────────────────
+const PANELES = ['Age 18','Age 19','Age 21','Age 22','Age 23','Age 24','Age 25','Sm'];
+const PC = ['p18','p19','p21','p22','p23','p24','p25','psm'];
+const DIAS_NOMBRE = ['LUNES','MARTES','MIÉRCOLES','JUEVES','VIERNES','SÁBADO','DOMINGO'];
+const DIAS_CORTO  = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+const PERSONAL = [
+  [{n:'Andrea',t:'M'},{n:'Meli',t:'T'},{n:'Tammi',t:'N'}],
+  [{n:'Lourdes',t:'M'},{n:'Ingrid',t:'T'},{n:'Nico',t:'N'}],
+  [{n:'Nao',t:'M'},{n:'Jhona',t:'T'},{n:'Majo',t:'N'}],
+  [{n:'Mili',t:'M'},{n:'Vero',t:'T'},{n:'Jenni',t:'N'}],
+  [{n:'Agus M',t:'M'},{n:'Maria',t:'T'},{n:'Anto',t:'N'}],
+  [{n:'Agus',t:'M'},{n:'Romi',t:'T'},{n:'Jhoa',t:'N'}],
+  [{n:'Cami',t:'M'},{n:'Thiago',t:'T'},{n:'May',t:'N'}],
+  [{n:'Rafa',t:'M'},{n:'Brisa',t:'T'},{n:'Mile',t:'N'}],
+];
+
+// ── ESTADO ──────────────────────────────────────────────────
+let MES = 'Junio 2026';
+let DATA = {};
+
+function g(k)   { return (DATA[MES] && DATA[MES][k] != null) ? DATA[MES][k] : ''; }
+function s(k,v) { if (!DATA[MES]) DATA[MES]={}; DATA[MES][k]=v; }
+function nv(v)  { return parseFloat((String(v)).replace(/\./g,'').replace(',','.')) || 0; }
+function fmt(v) { return v ? Math.round(v).toLocaleString('es-AR') : ''; }
+
+// ── NAV ─────────────────────────────────────────────────────
+function showSheet(id, el) {
+  document.querySelectorAll('.sheet').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.stab').forEach(x => x.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+  const flo = document.getElementById('resFlotante');
+  if (!flo) return;
+  const semMatch = id.match(/^sh_s[1-4]$/);
+  if (semMatch) { flo.classList.add('visible'); actualizarFlotante(id); }
+  else { flo.classList.remove('visible'); }
+}
+
+function actualizarFlotante(shId) {
+  const semNums = {'sh_s1':1,'sh_s2':2,'sh_s3':3,'sh_s4':4};
+  const t = document.getElementById('resFloTitulo');
+  if (t) t.textContent = `Semana ${semNums[shId]||1} — ${MES}`;
+  const PBGS = ['#FFFF00','#FFC000','#FF0000','#00B050','#0070C0','#7030A0','#00B0F0','#e0e0e0'];
+  const PTCS = ['#000','#000','#fff','#fff','#fff','#fff','#000','#000'];
+  let phtml = '';
+  PANELES.forEach((p,pi) => {
+    let tot=0;
+    for(let d=0;d<7;d++){
+      tot+=nv(g(`${shId}_d${d}_p${pi}_m`));
+      tot+=nv(g(`${shId}_d${d}_p${pi}_t`));
+      tot+=nv(g(`${shId}_d${d}_p${pi}_n`));
+    }
+    phtml+=`<span class="res-flo-p" style="background:${PBGS[pi]};color:${PTCS[pi]}">${p}${tot?' '+fmt(tot):''}</span>`;
+  });
+  const pd = document.getElementById('resFloPaneles');
+  if (pd) pd.innerHTML = phtml;
+  let tM=0,tL=0,tG=0;
+  for(let d=0;d<7;d++){
+    tM+=nv(g(`${shId}_d${d}_retM`));
+    tL+=nv(g(`${shId}_d${d}_retL`));
+    tG+=nv(g(`${shId}_d${d}_gasto`));
+  }
+  const eM=document.getElementById('resFloRetM');
+  const eL=document.getElementById('resFloRetL');
+  const eG=document.getElementById('resFloGasto');
+  if(eM) eM.textContent = tM?'$'+fmt(tM):'—';
+  if(eL) eL.textContent = tL?'$'+fmt(tL):'—';
+  if(eG) eG.textContent = tG?'$'+fmt(tG):'—';
+}
+
+async function cambiarMes() {
+  MES = document.getElementById('mesSelect').value;
+  // Resetear offsets de semana y sueldos al cambiar mes
+  ['sh_s1','sh_s2','sh_s3','sh_s4','sh_su1','sh_su2','sh_su3','sh_su4'].forEach(id => {
+    s(id+'_offset', '0');
+  });
+  await cargarDesdeFirebase();
+  renderAll();
+}
+
+// ── INPUT HELPER ─────────────────────────────────────────────
+function inp(id, extra='', ph='') {
+  const val = g(id);
+  return `<input class="c ${extra}" id="${id}" value="${val}" placeholder="${ph}"
+    oninput="onInp(this)" onchange="onInp(this)">`;
+}
+
+function onInp(el) {
+  s(el.id, el.value);
+  const id = el.id;
+
+  // Semana día: sh_s1_d2_p3_m  → recalc ese día
+  const mDia = id.match(/^(sh_s\d)_d(\d+)_(p\d+_[mtn]|retL|retM|pagF|banco|gasto|usd)$/);
+  if (mDia) { recalcDia(mDia[1], parseInt(mDia[2])); recalcSemRes(mDia[1]); }
+
+  // Sueldo: sh_su1_... → recalc ese sueldo
+  const mSu = id.match(/^(sh_su\d)_/);
+  if (mSu) recalcSueldo(mSu[1]);
+
+  // Carga: sh_carga_p2_c0_d3 → recalc esa carga
+  const mCg = id.match(/^(sh_carga)_p(\d+)_c(\d+)_d(\d+)$/);
+  if (mCg) recalcCarga(parseInt(mCg[3]));
+
+  autoSave();
+}
+
+// ── SETCALC ──────────────────────────────────────────────────
+function sc(id, val) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = fmt(val); el._val = val || 0; }
+}
+
+// ── RECALC DÍA ───────────────────────────────────────────────
+function recalcDia(sem, d) {
+  let totM=0, totT=0, totN=0;
+  PANELES.forEach((p,pi) => {
+    totM += nv(g(`${sem}_d${d}_p${pi}_m`));
+    totT += nv(g(`${sem}_d${d}_p${pi}_t`));
+    totN += nv(g(`${sem}_d${d}_p${pi}_n`));
+  });
+  const banco = nv(g(`${sem}_d${d}_banco`));
+  const retL  = nv(g(`${sem}_d${d}_retL`));
+  const retM  = nv(g(`${sem}_d${d}_retM`));
+  const pagF  = nv(g(`${sem}_d${d}_pagF`));
+  const gasto  = nv(g(`${sem}_d${d}_gasto`));
+  const usd    = nv(g(`${sem}_d${d}_usd`));
+  const sueJaz = nv(g(`${sem}_d${d}_sue_Jaz`));
+  const sueEmi = nv(g(`${sem}_d${d}_sue_Emi`));
+  const sueGus = nv(g(`${sem}_d${d}_sue_Gustavo`));
+  const total  = totM + totT + totN + banco;
+  const sub    = total - retL - retM - pagF - gasto - usd - sueJaz - sueEmi - sueGus;
+  sc(`${sem}_d${d}_totM`, totM);
+  sc(`${sem}_d${d}_totT`, totT);
+  sc(`${sem}_d${d}_totN`, totN);
+  sc(`${sem}_d${d}_totDia`, totM+totT+totN);
+  // Totales por panel
+  let totSue=0, totBon=0;
+  PANELES.forEach((p,pi) => {
+    const pm = nv(g(`${sem}_d${d}_p${pi}_m`));
+    const pt = nv(g(`${sem}_d${d}_p${pi}_t`));
+    const pn = nv(g(`${sem}_d${d}_p${pi}_n`));
+    sc(`${sem}_d${d}_p${pi}_tot`, pm+pt+pn);
+    totSue += nv(g(`${sem}_d${d}_p${pi}_sue`));
+    totBon += nv(g(`${sem}_d${d}_p${pi}_bon`));
+  });
+  sc(`${sem}_d${d}_totSue`, totSue);
+  sc(`${sem}_d${d}_totBon`, totBon);
+  sc(`${sem}_d${d}_total`, total);
+  sc(`${sem}_d${d}_sub`,   sub);
+  // Actualizar cards diseño A
+  const tcEl = document.getElementById(`${sem}_d${d}_total_card`);
+  const scEl = document.getElementById(`${sem}_d${d}_sub_card`);
+  const rLEl = document.getElementById(`${sem}_d${d}_retL_card`);
+  const rMEl = document.getElementById(`${sem}_d${d}_retM_card`);
+  if(tcEl) tcEl.textContent = total ? '$'+fmt(total) : '—';
+  if(scEl) scEl.textContent = sub   ? '$'+fmt(sub)   : '—';
+  if(rLEl) rLEl.textContent = retL  ? '$'+fmt(retL)  : '—';
+  if(rMEl) rMEl.textContent = retM  ? '$'+fmt(retM)  : '—';
+
+  // Propagar Sub Total al banco del día siguiente
+  if (sub > 0 && d < 6) {
+    const nextKey = `${sem}_d${d+1}_banco`;
+    const autoKey = `${sem}_d${d+1}_banco_auto`;
+    // Solo si no fue editado manualmente
+    if (!g(autoKey) || g(autoKey) === '1') {
+      s(nextKey, Math.round(sub).toString());
+      s(autoKey, '1');
+      const el = document.getElementById(nextKey);
+      if (el) { el.value = Math.round(sub).toLocaleString('es-AR'); el.style.background='#e8f0fe'; }
+      recalcDia(sem, d+1);
+      recalcSemRes(sem);
+    }
+  }
+}
+
+function recalcSemRes(sem) {
+  // Actualizar flotante si está visible
+  const flo = document.getElementById('resFlotante');
+  if (flo && flo.classList.contains('visible')) actualizarFlotante(sem);
+  PANELES.forEach((p,pi) => {
+    let tot=0;
+    for (let d=0; d<7; d++) {
+      tot += nv(g(`${sem}_d${d}_p${pi}_m`));
+      tot += nv(g(`${sem}_d${d}_p${pi}_t`));
+      tot += nv(g(`${sem}_d${d}_p${pi}_n`));
+    }
+    sc(`${sem}_res_p${pi}`, tot);
+  });
+  let tL=0, tM=0, tG=0;
+  for (let d=0; d<7; d++) {
+    tL += nv(g(`${sem}_d${d}_retL`));
+    tM += nv(g(`${sem}_d${d}_retM`));
+    tG += nv(g(`${sem}_d${d}_gasto`));
+  }
+  sc(`${sem}_totRetL`, tL);
+  sc(`${sem}_totRetM`, tM);
+  sc(`${sem}_totGasto`, tG);
+}
+
+// ── RECALC SUELDO ────────────────────────────────────────────
+function recalcSueldo(su) {
+  for (let d=0; d<7; d++) {
+    let col=0;
+    PANELES.forEach((p,pi) => {
+      PERSONAL[pi].forEach((per,peri) => {
+        col += nv(g(`${su}_p${pi}_r${peri}_d${d}`));
+      });
+    });
+    sc(`${su}_col${d}`, col);
+  }
+  let grand=0;
+  for (let d=0; d<7; d++) {
+    const el = document.getElementById(`${su}_col${d}`);
+    grand += el ? (el._val||0) : 0;
+  }
+  sc(`${su}_subtot`, grand);
+  // totales por persona
+  PANELES.forEach((p,pi) => {
+    PERSONAL[pi].forEach((per,peri) => {
+      let tot=0;
+      for (let d=0; d<7; d++) tot += nv(g(`${su}_p${pi}_r${peri}_d${d}`));
+      tot += nv(g(`${su}_p${pi}_r${peri}_prop`));
+      sc(`${su}_p${pi}_r${peri}_tot`, tot);
+    });
+  });
+}
+
+// ── RECALC CARGA ─────────────────────────────────────────────
+function recalcCarga(ci) {
+  PANELES.forEach((p,pi) => {
+    let row=0;
+    for (let d=0; d<7; d++) row += nv(g(`sh_carga_p${pi}_c${ci}_d${d}`));
+    sc(`cg_p${pi}_c${ci}_tot`, row*0.7);
+  });
+  for (let d=0; d<7; d++) {
+    let col=0;
+    PANELES.forEach((p,pi) => col += nv(g(`sh_carga_p${pi}_c${ci}_d${d}`)));
+    sc(`cg_c${ci}_d${d}_tot`, col);
+  }
+  let grand=0;
+  PANELES.forEach((p,pi) => {
+    let row=0;
+    for (let d=0; d<7; d++) row += nv(g(`sh_carga_p${pi}_c${ci}_d${d}`));
+    grand += row;
+  });
+  sc(`cg_c${ci}_grand`, grand*0.7);
+}
+
+// ── FERIADOS ARGENTINA 2026 ──────────────────────────────────
+const FERIADOS_2026 = new Set([
+  '2026-01-01','2026-02-16','2026-02-17', // Año nuevo, Carnaval
+  '2026-03-23','2026-03-24',               // Día de la Memoria
+  '2026-04-02',                            // Malvinas
+  '2026-04-03','2026-04-04',               // Semana Santa (Vie Santo, Sáb)
+  '2026-05-01','2026-05-25',               // Día del Trabajador, 25 de Mayo
+  '2026-06-15','2026-06-20',               // Güemes, Flag Day (Belgrano)
+  '2026-07-09',                            // Independencia
+  '2026-08-17',                            // San Martín
+  '2026-10-12',                            // Respeto a la Diversidad
+  '2026-11-20',                            // Soberanía Nacional
+  '2026-12-08','2026-12-25',               // Inmaculada Concepción, Navidad
+]);
+
+function esFeriado(fecha) {
+  if (!fecha) return false;
+  const iso = fecha.toISOString().split('T')[0];
+  return FERIADOS_2026.has(iso);
+}
+
+function nombreFeriado(fecha) {
+  const iso = fecha.toISOString().split('T')[0];
+  const nombres = {
+    '2026-01-01':'Año Nuevo','2026-02-16':'Carnaval','2026-02-17':'Carnaval',
+    '2026-03-23':'Día de la Memoria','2026-03-24':'Día de la Memoria',
+    '2026-04-02':'Día de Malvinas','2026-04-03':'Viernes Santo','2026-04-04':'Sábado Santo',
+    '2026-05-01':'Día del Trabajador','2026-05-25':'25 de Mayo',
+    '2026-06-15':'Día de Güemes','2026-06-20':'Día de la Bandera',
+    '2026-07-09':'Día de la Independencia','2026-08-17':'San Martín',
+    '2026-10-12':'Diversidad Cultural','2026-11-20':'Soberanía Nacional',
+    '2026-12-08':'Inmaculada Concepción','2026-12-25':'Navidad',
+  };
+  return nombres[iso] || '';
+}
+
+// ── HELPERS FECHA ────────────────────────────────────────────
+// Devuelve el lunes de la semana N del mes (0-indexed)
+function luneSemana(mesStr, semIdx) {
+  const [mesNom, anio] = mesStr.split(' ');
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const m = meses.indexOf(mesNom);
+  const y = parseInt(anio);
+  // Siempre empezar desde el día 1 del mes + semIdx*7
+  const d = new Date(y, m, 1 + semIdx*7);
+  return d;
+}
+
+function periodoLabel(lunes) {
+  const dom = new Date(lunes); dom.setDate(lunes.getDate()+6);
+  const pad = n => String(n).padStart(2,'0');
+  return `${pad(lunes.getDate())}/${pad(lunes.getMonth()+1)} al ${pad(dom.getDate())}/${pad(dom.getMonth()+1)}/${dom.getFullYear()}`;
+}
+
+function fechaDia(lunes, d) {
+  const dt = new Date(lunes); dt.setDate(lunes.getDate()+d);
+  const pad = n => String(n).padStart(2,'0');
+  return `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}`;
+}
+
+// semIdx: 0-3 para s1-s4
+const SEM_IDX = {'sh_s1':0,'sh_s2':1,'sh_s3':2,'sh_s4':3};
+
+function getSemOffset(shId) {
+  const key = shId+'_offset';
+  return parseInt(g(key)) || 0;
+}
+
+function moveSuSem(shId, delta) {
+  const key = shId+'_offset';
+  const cur = parseInt(g(key)) || 0;
+  s(key, cur+delta);
+  // Re-render solo la hoja de sueldos activa
+  const suMap = {'sh_su1':0,'sh_su2':1,'sh_su3':2,'sh_su4':3};
+  const idx = suMap[shId];
+  if (idx !== undefined) renderSueldo(shId, `Sueldos Semana ${idx+1} — ${MES}`);
+}
+
+function moveSem(shId, delta) {
+  const key = shId+'_offset';
+  const cur = getSemOffset(shId);
+  s(key, cur+delta);
+  renderSemana(shId, ''); // re-render
+  // Actualizar titulo
+  const idx = SEM_IDX[shId] !== undefined ? SEM_IDX[shId] : 0;
+  const lunes = getLunesSem(shId);
+  const el = document.getElementById(shId+'_periodo_lbl');
+  if(el) el.textContent = periodoLabel(lunes);
+}
+
+function getLunesSem(shId) {
+  const base = SEM_IDX[shId] !== undefined ? SEM_IDX[shId] : 0;
+  const offset = getSemOffset(shId);
+  const lunes = luneSemana(MES, base + offset);
+  return lunes;
+}
+
+function moveDay(shId, dIdx, delta) {
+  const key = `${shId}_d${dIdx}_offset`;
+  const cur = parseInt(g(key)) || 0;
+  s(key, cur+delta);
+  // Actualizar label del día
+  const lunes = getLunesSem(shId);
+  const dt = new Date(lunes); dt.setDate(lunes.getDate()+dIdx + (cur+delta));
+  const pad = n => String(n).padStart(2,'0');
+  const fechaStr = `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}`;
+  const lblEl = document.getElementById(`${shId}_d${dIdx}_flbl`);
+  if(lblEl) lblEl.textContent = fechaStr;
+  autoSave();
+}
+
+// ── RENDER SEMANA ────────────────────────────────────────────
+function renderSemana(shId, titulo) {
+  const el = document.getElementById(shId);
+  if (!el) return;
+
+  const semIdx = SEM_IDX[shId] !== undefined ? SEM_IDX[shId] : 0;
+  const lunes = getLunesSem(shId);
+  const periodo = periodoLabel(lunes);
+
+  // Titulo real
+  const tit = titulo || `${MES} — Semana ${semIdx+1}`;
+
+  let h = `<div class="shdr" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span>${tit}</span>
+    <div class="period-ctrl">
+      <button class="arr-btn" onclick="moveSem('${shId}',-1)" title="Semana anterior">&#8592;</button>
+      <span class="period-lbl" id="${shId}_periodo_lbl">${periodo}</span>
+      <button class="arr-btn" onclick="moveSem('${shId}',1)" title="Semana siguiente">&#8594;</button>
+    </div>
+  </div>`;
+
+  for (let d=0; d<7; d++) {
+    const dk = `${shId}_d${d}`;
+    const dayOffset = parseInt(g(`${dk}_offset`)) || 0;
+    const dt = new Date(lunes); dt.setDate(lunes.getDate()+d+dayOffset);
+    const pad = n => String(n).padStart(2,'0');
+    const fechaStr = `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}`;
+    const diaNom = DIAS_NOMBRE[d];
+
+    h += `<div class="blk">
+    <div class="blkhdr">
+      <span style="font-weight:700;min-width:90px">${diaNom}</span>
+      <div class="day-ctrl">
+        <button class="day-arr" onclick="moveDay('${shId}',${d},-1)" title="Día anterior">&#8592;</button>
+        <span class="day-lbl" id="${dk}_flbl">${fechaStr}</span>
+        <button class="day-arr" onclick="moveDay('${shId}',${d},1)" title="Día siguiente">&#8594;</button>
+      </div>
+    </div>
+    <table>
+      <thead><tr>
+        <th style="width:65px">Fecha</th>
+        <th style="width:100px">Panel</th>
+        <th style="width:120px">Mañana</th>
+        <th style="width:120px">Tarde</th>
+        <th style="width:120px">Noche</th>
+        <th style="width:110px;background:#e8f5e9">Sueldos</th>
+        <th style="width:110px;background:#e3f2fd">Bonificación</th>
+        <th style="width:120px;background:#ffe0b2">Total</th>
+      </tr></thead>
+      <tbody>`;
+
+    PANELES.forEach((p,pi) => {
+      h += `<tr>
+        <td>${d===0 ? DIAS_CORTO[d] : ''}</td>
+        <td class="${PC[pi]}">${p}</td>
+        <td>${inp(`${dk}_p${pi}_m`)}</td>
+        <td>${inp(`${dk}_p${pi}_t`)}</td>
+        <td>${inp(`${dk}_p${pi}_n`)}</td>
+        <td style="background:#f1f8f1">${inp(`${dk}_p${pi}_sue`)}</td>
+        <td style="background:#e8f4fd">${inp(`${dk}_p${pi}_bon`)}</td>
+        <td class="calc" style="background:#fff8f0" id="${dk}_p${pi}_tot"></td>
+      </tr>`;
+    });
+
+    h += `
+      <tr class="rojo">
+        <td></td><td>Total Dia</td>
+        <td class="calc-r" id="${dk}_totM"></td>
+        <td class="calc-r" id="${dk}_totT"></td>
+        <td class="calc-r" id="${dk}_totN"></td>
+        <td class="calc-r" id="${dk}_totSue"></td>
+        <td class="calc-r" id="${dk}_totBon"></td>
+        <td class="calc-r" id="${dk}_totDia"></td>
+      </tr>
+      <tr>
+        <td></td><td style="font-weight:700">Lezcano Retiro</td>
+        <td>${inp(`${dk}_retL`)}</td>
+        <td style="text-align:center">
+          <button class="obs-btn" data-key="${dk}_retL_obs" data-titulo="Lezcano Retiro" onclick="obsClick(this)" title="Observación">📝</button>
+          <span class="obs-preview" id="${dk}_retL_obs_prev"></span>
+        </td>
+        <td></td><td></td><td></td><td></td>
+      </tr>
+      <tr>
+        <td></td><td style="font-weight:700">Martin Retiro</td>
+        <td>${inp(`${dk}_retM`)}</td>
+        <td style="text-align:center">
+          <button class="obs-btn" data-key="${dk}_retM_obs" data-titulo="Martin Retiro" onclick="obsClick(this)" title="Observación">📝</button>
+          <span class="obs-preview" id="${dk}_retM_obs_prev"></span>
+        </td>
+        <td></td>
+      </tr>
+      <tr><td></td><td style="font-weight:700">Pagos Fichas</td>
+        <td>${inp(`${dk}_pagF`)}</td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr style="background:#e8f4e8"><td></td><td style="font-weight:700">banco</td>
+        <td><input class="c" id="${dk}_banco" value="${g(`${dk}_banco`)}"
+          style="background:${g(`${dk}_banco_auto`)==='1'?'#e8f0fe':'transparent'}"
+          oninput="s('${dk}_banco_auto','0');onInp(this)"
+          onchange="s('${dk}_banco_auto','0');onInp(this)"></td>
+        <td></td><td></td><td></td><td></td><td></td></tr>
+      </tbody></table>
+
+      <!-- DISEÑO A: métricas + inputs en lista -->
+      <div style="padding:10px 8px">
+        <div class="dia-metrics">
+          <div class="dia-metric">
+            <div class="dia-metric-lbl">Total día</div>
+            <div class="dia-metric-val cyan" id="${dk}_total_card">—</div>
+          </div>
+          <div class="dia-metric">
+            <div class="dia-metric-lbl">Sub Total</div>
+            <div class="dia-metric-val red" id="${dk}_sub_card">—</div>
+          </div>
+          <div class="dia-metric">
+            <div class="dia-metric-lbl">Retiro Lezcano</div>
+            <div class="dia-metric-val amber" id="${dk}_retL_card">—</div>
+          </div>
+          <div class="dia-metric">
+            <div class="dia-metric-lbl">Retiro Martin</div>
+            <div class="dia-metric-val amber" id="${dk}_retM_card">—</div>
+          </div>
+        </div>
+        <div class="dia-inp-row">
+          <span class="dia-inp-lbl">Pagos Fichas</span>
+          <div class="dia-inp-wrap">
+            <div class="dia-inp-fake">${g(`${dk}_pagF`)?fmt(nv(g(`${dk}_pagF`))):'—'}</div>
+            ${inp(`${dk}_pagF`,'','pagF')}
+          </div>
+        </div>
+        <div class="dia-inp-row">
+          <span class="dia-inp-lbl">Banco</span>
+          <input class="c" id="${dk}_banco" value="${g(`${dk}_banco`)}"
+            style="background:${g(`${dk}_banco_auto`)==='1'?'rgba(56,189,248,.08)':'transparent'};width:120px;text-align:right;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--accent-t)"
+            oninput="s('${dk}_banco_auto','0');onInp(this)"
+            onchange="s('${dk}_banco_auto','0');onInp(this)">
+        </div>
+        <div class="dia-inp-row">
+          <span class="dia-inp-lbl">Gasto</span>
+          <div class="dia-inp-wrap">
+            ${inp(`${dk}_gasto`)}
+            <button class="obs-btn" data-key="${dk}_gasto_obs" data-titulo="Gasto" onclick="obsClick(this)">📝</button>
+          </div>
+        </div>
+        <div class="dia-inp-row">
+          <span class="dia-inp-lbl">Sueldos Jaz</span>
+          ${inp(`${dk}_sue_Jaz`)}
+        </div>
+        <div class="dia-inp-row">
+          <span class="dia-inp-lbl">Sueldos Emi</span>
+          ${inp(`${dk}_sue_Emi`)}
+        </div>
+        <div class="dia-inp-row">
+          <span class="dia-inp-lbl">Sueldos Gustavo</span>
+          ${inp(`${dk}_sue_Gustavo`)}
+        </div>
+        <div class="dia-inp-row">
+          <span class="dia-inp-lbl">Compra Us$</span>
+          <div class="dia-inp-wrap">
+            ${inp(`${dk}_usd`)}
+            <button class="obs-btn" data-key="${dk}_usd_obs" data-titulo="Compra Us$" onclick="obsClick(this)">📝</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // Resumen por panel
+  h += `<div class="shdr" style="background:#2e4a7a;font-size:11px;margin-top:6px">
+    Resumen acumulado semana por panel</div>
+  <table><thead><tr>`;
+  PANELES.forEach((p,pi) => h += `<th class="${PC[pi]}">${p}</th>`);
+  h += `</tr></thead><tbody><tr>`;
+  PANELES.forEach((p,pi) => h += `<td class="calc" id="${shId}_res_p${pi}" style="min-width:95px"></td>`);
+  h += `</tr></tbody></table>
+  <div style="padding:4px;font-size:11px;display:flex;gap:20px;flex-wrap:wrap">
+    <span>Retiros Martin:&nbsp;<b id="${shId}_totRetM" style="color:#c00"></b></span>
+    <span>Retiros Lezcano:&nbsp;<b id="${shId}_totRetL" style="color:#c00"></b></span>
+    <span>Total Gastos:&nbsp;<b id="${shId}_totGasto" style="color:#c55a11"></b></span>
+  </div><br>`;
+
+  el.innerHTML = h;
+
+  // Recalcular todo
+  for (let d=0; d<7; d++) recalcDia(shId, d);
+  recalcSemRes(shId);
+  // Inicializar previews de observaciones
+  for (let d=0; d<7; d++) {
+    const dk = `${shId}_d${d}`;
+    ['retL','retM','gasto','usd'].forEach(tipo => {
+      const key = `${dk}_${tipo}_obs`;
+      const val = g(key);
+      const el = document.getElementById(`${key}_prev`);
+      if (el && val) el.textContent = '💬 ' + val.substring(0,30) + (val.length>30?'...':'');
+    });
+  }
+  // Completar sueldos y bonificaciones automáticamente desde turnosData
+  completarSueldosBonif(shId);
+}
+
+// ── RENDER CARGAS ────────────────────────────────────────────
+function renderCargas() {
+  const el = document.getElementById('sh_carga');
+  if (!el) return;
+  const SEMS = ['Semana 1','Semana 2','Semana 3','Semana 4','Semana 5'];
+  let h = '';
+
+  SEMS.forEach((label, ci) => {
+    h += `<div class="shdr">${label} &nbsp;
+      <input class="c lft wh" id="sh_carga_c${ci}_label" value="${g('sh_carga_c'+ci+'_label')}"
+        placeholder="Ej: 04/05 al 10/05" style="width:160px;background:transparent"
+        oninput="onInp(this)" onchange="onInp(this)">
+      <span style="font-weight:400;font-size:10px">&nbsp;×0.7</span>
+    </div>
+    <table><thead><tr><th>Panel</th>`;
+    DIAS_CORTO.forEach(d => h += `<th>${d}</th>`);
+    h += `<th style="background:#fff3a0">Total ×0.7</th></tr></thead><tbody>`;
+
+    PANELES.forEach((p,pi) => {
+      h += `<tr><td class="${PC[pi]}">${p}</td>`;
+      for (let d=0; d<7; d++) {
+        h += `<td>${inp(`sh_carga_p${pi}_c${ci}_d${d}`)}</td>`;
+      }
+      h += `<td class="calc" style="background:#fff3a0" id="cg_p${pi}_c${ci}_tot"></td></tr>`;
+    });
+
+    h += `<tr class="rojo"><td>TOTAL</td>`;
+    for (let d=0; d<7; d++) h += `<td class="calc-r" id="cg_c${ci}_d${d}_tot"></td>`;
+    h += `<td class="calc-r" id="cg_c${ci}_grand"></td></tr>`;
+    h += `</tbody></table><br>`;
+  });
+
+  el.innerHTML = h;
+  for (let ci=0; ci<5; ci++) recalcCarga(ci);
+}
+
+// ── RENDER SUELDOS ───────────────────────────────────────────
+function renderSueldo(shId, titulo) {
+  const el = document.getElementById(shId);
+  if (!el) return;
+
+  // Calcular fechas reales de la semana
+  const suSemIdx = ['sh_su1','sh_su2','sh_su3','sh_su4'].indexOf(shId);
+  const suOffset = parseInt(g(shId+'_offset')) || 0;
+  const suLunes  = luneSemana(MES, suSemIdx + suOffset);
+  const suDias   = Array.from({length:7}, (_,i) => {
+    const dt = new Date(suLunes); dt.setDate(suLunes.getDate()+i); return dt;
+  });
+
+  let h = `<div class="shdr" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span>${titulo}</span>
+    <span style="font-size:10px;font-weight:400;opacity:.8">${periodoLabel(suLunes)}</span>
+    <div class="period-ctrl" style="margin-left:auto">
+      <button class="arr-btn" onclick="moveSuSem('${shId}',-1)">&#8592;</button>
+      <button class="arr-btn" onclick="moveSuSem('${shId}',1)">&#8594;</button>
+    </div>
+  </div>
+  <table><thead><tr>
+    <th>Panel</th><th>Personal</th><th>Tipo Pago</th><th>Turno</th>`;
+
+  suDias.forEach((dt,i) => {
+    const fer = esFeriado(dt);
+    const nom = DIAS_CORTO[i];
+    const dia = dt.getDate();
+    const ferNom = fer ? nombreFeriado(dt) : '';
+    h += `<th class="${fer?'fer-hdr':''}" title="${ferNom}">${nom} ${dia}`;
+    if (fer) h += `<br><span style="font-size:8px;font-weight:400">${ferNom}</span>`;
+    h += `</th>`;
+  });
+
+  h += `<th style="background:#d9e1f2">Propina</th>
+    <th style="background:#e6ffe6">Total</th>
+  </tr></thead><tbody>`;
+
+  let pAnterior = -1;
+  PANELES.forEach((p,pi) => {
+    PERSONAL[pi].forEach((per,ri) => {
+      const sep = pi !== pAnterior ? 'border-top:2px solid #888' : '';
+      pAnterior = pi;
+      h += `<tr style="${sep}">
+        <td class="${PC[pi]}">${p}</td>
+        <td><input class="c lft" id="${shId}_p${pi}_r${ri}_nom"
+          value="${g(shId+'_p'+pi+'_r'+ri+'_nom') || per.n}"
+          oninput="onInp(this)" style="min-width:70px"></td>
+        <td style="text-align:center">
+          <select class="sel-tipo" id="${shId}_p${pi}_r${ri}_tipo"
+            onchange="onInp(this);colorTipo(this)">
+            <option value="D" ${(g(shId+'_p'+pi+'_r'+ri+'_tipo')||'D')==='D'?'selected':''}>Diario</option>
+            <option value="S" ${(g(shId+'_p'+pi+'_r'+ri+'_tipo')||'D')==='S'?'selected':''}>Semana</option>
+            <option value="Q" ${(g(shId+'_p'+pi+'_r'+ri+'_tipo')||'D')==='Q'?'selected':''}>Quincena</option>
+            <option value="F" ${(g(shId+'_p'+pi+'_r'+ri+'_tipo')||'D')==='F'?'selected':''}>Franqueros</option>
+          </select>
+        </td>
+        <td style="text-align:center">${per.t}</td>`;
+
+      for (let d=0; d<7; d++) {
+        const fer2 = esFeriado(suDias[d]);
+        h += `<td class="${fer2?'feriado':''}">${inp(`${shId}_p${pi}_r${ri}_d${d}`)}</td>`;
+      }
+
+      h += `<td>${inp(`${shId}_p${pi}_r${ri}_prop`)}</td>
+        <td class="calc" style="background:#e6ffe6" id="${shId}_p${pi}_r${ri}_tot"></td>
+      </tr>`;
+    });
+  });
+
+  // Fila totales
+  h += `<tr class="total-row rojo"><td colspan="4">TOTAL</td>`;
+  for (let d=0; d<7; d++) h += `<td class="calc-r" id="${shId}_col${d}"></td>`;
+  h += `<td></td><td class="calc-r" id="${shId}_subtot"></td></tr>
+  </tbody></table>
+
+  <br><div class="shdr" style="background:#444;font-size:11px">Personal / Gerencia</div>
+  <table><thead><tr>
+    <th>Personal</th><th>Sueldo base</th><th>Quince</th><th>Semanal</th><th>Mensual</th>
+    <th>Sem 1</th><th>Sem 2</th><th>Sem 3</th><th>Sem 4</th>
+  </tr></thead><tbody>`;
+
+  ['Gustavo','Jazmin','Emi'].forEach((nom,gi) => {
+    h += `<tr>
+      <td><input class="c lft" id="${shId}_g${gi}_nom" value="${nom}"
+        style="min-width:70px;background:#f5f5f5" readonly></td>
+      <td>${inp(`${shId}_g${gi}_base`)}</td>
+      <td>${inp(`${shId}_g${gi}_q`)}</td>
+      <td>${inp(`${shId}_g${gi}_sem`)}</td>
+      <td>${inp(`${shId}_g${gi}_men`)}</td>
+      <td>${inp(`${shId}_g${gi}_s1`)}</td>
+      <td>${inp(`${shId}_g${gi}_s2`)}</td>
+      <td>${inp(`${shId}_g${gi}_s3`)}</td>
+      <td>${inp(`${shId}_g${gi}_s4`)}</td>
+    </tr>`;
+  });
+  h += `</tbody></table>`;
+
+  el.innerHTML = h;
+  recalcSueldo(shId);
+  colorTiposAll();
+}
+
+
+// ── FIREBASE HELPERS ─────────────────────────────────────────
+function fbDoc(mes) {
+  return window._doc(window._db, 'retiros_data', mes.replace(/ /g,'_'));
+}
+
+// ── MAPEO PANELES → AGENTES TURNOSDATA ───────────────────────
+const PANEL_TO_AG = {
+  'Age 18': 'AG 18',
+  'Age 19': 'AG 19',
+  'Age 21': 'AG 21',
+  'Age 22': 'AG 22',
+  'Age 23': 'AG 23',
+  'Age 24': 'AG 24',
+  'Age 25': 'AG 25',
+  'Sm':     'SIEMPRE MONO',
+};
+
+// Caché de turnosData
+window.window.TURNOS_CACHE = {};
+
+window.cargarTurnosData = async function cargarTurnosData() {
+  if (!window._fbReady || !window._db) return;
+  try {
+    // Traer los docs de retiros_sueldos directamente por fecha
+    // Calcular rango de fechas del mes actual
+    const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const [mesNom, anio] = MES.split(' ');
+    const m = meses.indexOf(mesNom);
+    const y = parseInt(anio);
+    const fechas = [];
+    const diasEnMes = new Date(y, m+1, 0).getDate();
+    for (let d=1; d<=diasEnMes; d++) {
+      const f = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      fechas.push(f);
+    }
+    // También incluir últimos días del mes anterior (para semana 1)
+    for (let d=1; d<=7; d++) {
+      const dt = new Date(y, m, d-7);
+      const f = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+      fechas.push(f);
+    }
+
+    // Leer cada fecha de Firebase
+    await Promise.all(fechas.map(async fecha => {
+      try {
+        const snap = await window._getDoc(window._doc(window._db, 'retiros_sueldos', fecha));
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.agentes) {
+            Object.entries(data.agentes).forEach(([agKey, turnos]) => {
+              if (!window.TURNOS_CACHE[agKey]) window.window.TURNOS_CACHE[agKey] = {};
+              window.TURNOS_CACHE[agKey][fecha] = turnos;
+            });
+          }
+        }
+      } catch(e) {}
+    }));
+    console.log('retiros_sueldos cargado. Agentes:', Object.keys(TURNOS_CACHE));
+  } catch(e) {
+    console.warn('Error cargando retiros_sueldos:', e);
+  }
+}
+
+window.getSueldo = function getSueldo(panel, fecha) {
+  // fecha formato YYYY-MM-DD
+  const agKey = PANEL_TO_AG[panel];
+  if (!agKey || !window.TURNOS_CACHE[agKey]) return 0;
+  const diaData = window.TURNOS_CACHE[agKey][fecha];
+  if (!diaData) return 0;
+  // Sumar sueldo de los 3 turnos
+  let total = 0;
+  ['manana','tarde','noche'].forEach(t => {
+    if (diaData[t] && diaData[t].sueldo) {
+      total += parseFloat(diaData[t].sueldo) || 0;
+    }
+  });
+  return total;
+}
+
+window.getBonif = function getBonif(panel, fecha) {
+  const agKey = PANEL_TO_AG[panel];
+  if (!agKey || !window.TURNOS_CACHE[agKey]) return 0;
+  const diaData = window.TURNOS_CACHE[agKey][fecha];
+  if (!diaData) return 0;
+  let total = 0;
+  ['manana','tarde','noche'].forEach(t => {
+    if (diaData[t] && diaData[t].bonos) {
+      total += parseFloat(diaData[t].bonos) || 0;
+    }
+  });
+  return total;
+}
+
+window.completarSueldosBonif = async function completarSueldosBonif(shId) {
+  await cargarTurnosData();
+  const semIdx = ['sh_s1','sh_s2','sh_s3','sh_s4'].indexOf(shId);
+  const offset  = parseInt(g(shId+'_offset')) || 0;
+  const lunes   = luneSemana(MES, semIdx + offset);
+
+  for (let d = 0; d < 7; d++) {
+    const dt = new Date(lunes);
+    dt.setDate(lunes.getDate() + d);
+    const pad = n => String(n).padStart(2,'0');
+    const fecha = `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`;
+    const dk = `${shId}_d${d}`;
+
+    PANELES.forEach((panel, pi) => {
+      const sue = getSueldo(panel, fecha);
+      const bon = getBonif(panel, fecha);
+
+      if (sue > 0) {
+        s(`${dk}_p${pi}_sue`, Math.round(sue).toString());
+        const el = document.getElementById(`${dk}_p${pi}_sue`);
+        if (el) { el.value = Math.round(sue).toLocaleString('es-AR'); el.style.background='rgba(52,211,153,.08)'; }
+      }
+      if (bon > 0) {
+        s(`${dk}_p${pi}_bon`, Math.round(bon).toString());
+        const el = document.getElementById(`${dk}_p${pi}_bon`);
+        if (el) { el.value = Math.round(bon).toLocaleString('es-AR'); el.style.background='rgba(56,189,248,.08)'; }
+      }
+    });
+    // Recalcular día
+    recalcDia(shId, d);
+  }
+  recalcSemRes(shId);
+  autoSave();
+}
+
+// ── GUARDAR / AUTOSAVE ───────────────────────────────────────
+let asTimer = null;
+function autoSave() {
+  clearTimeout(asTimer);
+  asTimer = setTimeout(() => guardarFirebase(), 800);
+}
+
+async function guardarFrancos() {
+  // Recopilar los datos actuales de los inputs de francos
+  try {
+    if (!window._fbReady || !window._db) return;
+    // Leer valores actuales de los inputs fra_g*
+    const grupos = JSON.parse(JSON.stringify(GRUPOS)); // copia de GRUPOS con valores editados
+    grupos.forEach((grp, gi) => {
+      grp.turnos.forEach((turno, ti) => {
+        turno.d.forEach((_, di) => {
+          const key = `fra_g${gi}_t${ti}_d${di}`;
+          const el = document.getElementById(key);
+          if (el && el.value) turno.d[di] = el.value;
+        });
+      });
+    });
+    await window._setDoc(
+      window._doc(window._db, 'francos_data', 'tabla'),
+      { grupos, reempl: REEMPL_DATA_GLOBAL, updated: new Date().toISOString() }
+    );
+  } catch(e) { console.warn('Error guardando francos:', e); }
+}
+
+async function guardarFirebase() {
+  const m = document.getElementById('asMsg');
+  if (m) { m.style.display='block'; m.textContent='Guardando...'; }
+  try {
+    // Siempre guardar en localStorage como respaldo
+    localStorage.setItem('retiros26', JSON.stringify(DATA));
+    // Guardar en Firebase si está disponible
+    if (window._fbReady && window._db) {
+      await window._setDoc(fbDoc(MES), { data: JSON.stringify(DATA[MES]||{}), mes: MES, updated: new Date().toISOString() });
+      // También guardar francos si estamos en esa sección
+      await guardarFrancos();
+    }
+    if (m) { m.textContent='✓ Guardado'; setTimeout(()=>m.style.display='none',1200); }
+  } catch(e) {
+    console.error('Error guardando:', e);
+    if (m) { m.textContent='⚠ Error al guardar'; setTimeout(()=>m.style.display='none',2000); }
+  }
+}
+
+function guardar() {
+  guardarFirebase();
+  const m = document.getElementById('savedInd');
+  if (m) { m.style.display='inline'; setTimeout(()=>m.style.display='none',2000); }
+}
+
+async function cargarDesdeFirebase() {
+  try {
+    const snap = await window._getDoc(fbDoc(MES));
+    if (snap.exists()) {
+      const remote = JSON.parse(snap.data().data || '{}');
+      if (!DATA[MES]) DATA[MES] = {};
+      DATA[MES] = Object.assign({}, DATA[MES], remote);
+    }
+  } catch(e) {
+    console.warn('Error cargando Firebase:', e);
+  }
+}
+
+async function cargarStorage() {
+  // 1. Cargar localStorage como base rápida
+  try {
+    const raw = localStorage.getItem('retiros26');
+    if (raw) DATA = JSON.parse(raw);
+  } catch(e) { DATA = {}; }
+
+  // 2. Esperar hasta 3 segundos a que Firebase esté listo
+  await new Promise(resolve => {
+    if (window._fbReady && window._db) {
+      resolve();
+    } else {
+      const timeout = setTimeout(resolve, 3000);
+      window.addEventListener('fbReady', () => { clearTimeout(timeout); resolve(); }, { once: true });
+    }
+  });
+
+  // 3. Cargar desde Firebase (sobreescribe localStorage)
+  await cargarDesdeFirebase();
+}
+
+// ── EXPORTAR CSV ─────────────────────────────────────────────
+function exportarCSV() {
+  const rows = [[`Control de Retiros — ${MES}`],[]];
+  ['sh_s1','sh_s2','sh_s3','sh_s4'].forEach((sem,si) => {
+    rows.push([`Semana ${si+1}: ${g(sem+'_period')}`]);
+    rows.push(['Día','Panel','Mañana','Tarde','Noche','Ret.Lez','Ret.Mar','P.Fichas','Banco','Gasto','US$','SubTotal']);
+    for (let d=0; d<7; d++) {
+      const dk=`${sem}_d${d}`;
+      let tM=0,tT=0,tN=0;
+      PANELES.forEach((p,pi)=>{
+        tM+=nv(g(`${dk}_p${pi}_m`)); tT+=nv(g(`${dk}_p${pi}_t`)); tN+=nv(g(`${dk}_p${pi}_n`));
+        const m=g(`${dk}_p${pi}_m`), t=g(`${dk}_p${pi}_t`), n=g(`${dk}_p${pi}_n`);
+        if(m||t||n) rows.push(['',p,m||0,t||0,n||0,'','','','','','','']);
+      });
+      const banco=nv(g(`${dk}_banco`)), retL=nv(g(`${dk}_retL`)), retM=nv(g(`${dk}_retM`));
+      const pagF=nv(g(`${dk}_pagF`)), gasto=nv(g(`${dk}_gasto`)), usd=nv(g(`${dk}_usd`));
+      const sub=tM+tT+tN+banco-retL-retM-pagF-gasto-usd;
+      rows.push([g(`${dk}_nom`)||DIAS_NOMBRE[d],'TOTAL',tM,tT,tN,retL,retM,pagF,banco,gasto,usd,sub]);
+    }
+    rows.push([]);
+  });
+  const csv = '\uFEFF' + rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download = `Retiros_${MES.replace(' ','_')}.csv`;
+  a.click();
+}
+
+// ── RENDER DIRECCIONES ───────────────────────────────────────
+function renderDirecciones() {
+  const el = document.getElementById('sh_dir');
+  if (!el) return;
+
+  const DIRS_DEF = [
+    {nom:'Andrea', dir:'Charlone 2167 (Villa Ortuza)',    mod:'HP I5',   panel:18, t:'M'},
+    {nom:'Meli',   dir:'Wagner 959 (Hurlingam)',           mod:'—',       panel:18, t:'T'},
+    {nom:'Tammi',  dir:'San Javier 2060 (Pablo Podestá)', mod:'HP I7',   panel:18, t:'N'},
+    {nom:'Lourdes',dir:'Belgrano 107 (Burzaco)',          mod:'HP I5',   panel:19, t:'M'},
+    {nom:'Ingrid', dir:'Vicente López y Planes 8471 (Podestá)', mod:'HP I5', panel:19, t:'T'},
+    {nom:'Nico',   dir:'Juan B. Alberdi 5691 (Caseros)',  mod:'HP I5',   panel:19, t:'N'},
+    {nom:'Nao',    dir:'—',                               mod:'HP I5',   panel:21, t:'M'},
+    {nom:'Jhona',  dir:'Pichincha 4780 (Villa Coronel)',  mod:'ASUS I3', panel:21, t:'T'},
+    {nom:'Majo',   dir:'Ríos 1038 (Glew)',               mod:'—',       panel:21, t:'N'},
+    {nom:'Mili',   dir:'J.M. Bosche 6172 (San Martín)',  mod:'ASUS x515ea', panel:22, t:'M'},
+    {nom:'Vero',   dir:'Ceferino Namuncurá 3302 (Lanús)', mod:'HP I7',  panel:22, t:'T'},
+    {nom:'Jenni',  dir:'Prov. Santa Fe 68 entre Silva y Espora', mod:'Dell', panel:22, t:'N'},
+    {nom:'Agus M', dir:'J.M. Bosche 6172 (San Martín)',  mod:'HP I3',   panel:23, t:'M'},
+    {nom:'Maria',  dir:'Cucha Cucha 779 (Caballito)',    mod:'—',       panel:23, t:'T'},
+    {nom:'Anto',   dir:'López 2898',                     mod:'—',       panel:23, t:'N'},
+    {nom:'Agus',   dir:'L. López 2700 (Claypole)',       mod:'—',       panel:24, t:'M'},
+    {nom:'Romi',   dir:'J. Mazzini 2853 (Hurlingam)',    mod:'I3',      panel:24, t:'T'},
+    {nom:'Jhoa',   dir:'511 2478 (Florencio Varela)',    mod:'—',       panel:24, t:'N'},
+    {nom:'Cami',   dir:'Augusto Prieto 553 (Lanús)',     mod:'HP I7',   panel:25, t:'M'},
+    {nom:'Thiago', dir:'L. López 2700 (Claypole)',       mod:'—',       panel:25, t:'T'},
+    {nom:'Mayra',  dir:'Crisantemos 5965 (San Martín)',  mod:'HP I7',   panel:25, t:'N'},
+    {nom:'Rafa',   dir:'Cucha Cucha 779 (Caballito)',    mod:'—',       panel:'SM', t:'M'},
+    {nom:'Brisa',  dir:'Lacroze 2053 (Villa Lynch)',     mod:'I7',      panel:'SM', t:'T'},
+    {nom:'Mile',   dir:'—',                              mod:'—',       panel:'SM', t:'N'},
+    {nom:'Flor',   dir:'Juan B. Alberdi 5691 (Caseros)', mod:'HP I5',   panel:'Franco N', t:''},
+    {nom:'Ludmi',  dir:'Clemenceau 44 (Gerli)',          mod:'HP I3',   panel:'Franco M', t:''},
+    {nom:'Sofi',   dir:'Pichincha 4780 (Villa Coronel)', mod:'—',       panel:'Franco T', t:''},
+    {nom:'Guada',  dir:'Crisantemos 5965 (San Martín)',  mod:'—',       panel:'Franco',   t:''},
+  ];
+  const PCLS = {18:'p18',19:'p19',20:'p21',21:'p21',22:'p22',23:'p23',24:'p24',25:'p25','SM':'psm'};
+
+  let h = `<div class="shdr">Direcciones del Personal</div>
+  <table>
+    <thead><tr>
+      <th>Nombre</th><th>Dirección</th><th>Modelo</th><th>Panel</th><th>Turno</th><th>Nota</th>
+    </tr></thead><tbody>`;
+
+  let panelAnterior = null;
+  DIRS_DEF.forEach((d, i) => {
+    const pc = PCLS[d.panel] || 'psm';
+    const sep = d.panel !== panelAnterior ? 'border-top:2px solid #888' : '';
+    panelAnterior = d.panel;
+    // Campos editables usando storage con prefijo dir_
+    const nomKey = `dir_${i}_nom`;
+    const dirKey = `dir_${i}_dir`;
+    const modKey = `dir_${i}_mod`;
+    const notKey = `dir_${i}_not`;
+    h += `<tr style="${sep}">
+      <td><input class="c lft" id="${nomKey}" value="${g(nomKey)||d.nom}"
+        oninput="onInp(this)" style="min-width:70px"></td>
+      <td><input class="c lft" id="${dirKey}" value="${g(dirKey)||d.dir}"
+        oninput="onInp(this)" style="min-width:200px"></td>
+      <td><input class="c lft" id="${modKey}" value="${g(modKey)||d.mod}"
+        oninput="onInp(this)" style="min-width:80px"></td>
+      <td class="${pc}" style="text-align:center;font-weight:700">${d.panel}</td>
+      <td style="text-align:center">${d.t}</td>
+      <td><input class="c lft" id="${notKey}" value="${g(notKey)||''}"
+        oninput="onInp(this)" placeholder="nota..." style="min-width:100px"></td>
+    </tr>`;
+  });
+  h += '</tbody></table>';
+  el.innerHTML = h;
+}
+
+// ── RENDER FRANCOS ───────────────────────────────────────────
+function renderFrancos() {
+  const el = document.getElementById('sh_fra');
+  if (!el) return;
+
+  const DIAS = ['Lunes','Martes','Miérc.','Jueves','Viernes','Sábado','Domingo'];
+  const GRUPOS = [
+    {panel:'Age 18', bg:'#FFFF00', tc:'#000',
+     turnos:[
+       {t:'Mañana', d:['Andrea','Lud','Andrea','Andrea','Andrea','Andrea','Andrea']},
+       {t:'Tarde',  d:['Meli','Sofi','Meli','Meli','Meli','Meli','Meli']},
+       {t:'Noche',  d:['Guada','Guada','Guada','Flor','Guada','Guada','Guada']},
+     ]},
+    {panel:'Age 19', bg:'#FFC000', tc:'#000',
+     turnos:[
+       {t:'Mañana', d:['Lourdes','Lourdes','Lourdes','Lourdes','Lourdes','Lourdes','Lourdes']},
+       {t:'Tarde',  d:['Tami','Tami','Sofi','Tami','Tami','Tami','Tami']},
+       {t:'Noche',  d:['Nico','Valen','Nico','Nico','Nico','Nico','Nico']},
+     ]},
+    {panel:'Age 21', bg:'#FF0000', tc:'#fff',
+     turnos:[
+       {t:'Mañana', d:['Nao','Nao','Nao','Nao','Nao','Lud','Nao']},
+       {t:'Tarde',  d:['Jhona','Jhona','Jhona','Jhona','Jhona','Jhona','Valen']},
+       {t:'Noche',  d:['Majo','Majo','Majo','Majo','Majo','Flor','Majo']},
+     ]},
+    {panel:'Age 22', bg:'#00B050', tc:'#fff',
+     turnos:[
+       {t:'Mañana', d:['Mili','Mili','Mili','Mili','Lud','Mili','Mili']},
+       {t:'Tarde',  d:['Vero','Vero','Vero','Vero','Vero','Sofi','Vero']},
+       {t:'Noche',  d:['Valen','Jeni','Jeni','Jeni','Jeni','Jeni','Jeni']},
+     ]},
+    {panel:'Age 23', bg:'#0070C0', tc:'#fff',
+     turnos:[
+       {t:'Mañana', d:['Agus','Agus','Agus','Agus','Agus','Agus','Lud']},
+       {t:'Tarde',  d:['Maria','Maria','Maria','Maria','Maria','Maria','Maria']},
+       {t:'Noche',  d:['Anto','Anto','Anto','Anto','Flor','Anto','Anto']},
+     ]},
+    {panel:'Age 24', bg:'#7030A0', tc:'#fff',
+     turnos:[
+       {t:'Mañana', d:['Agus','Agus','Agus','Lud','Agus','Agus','Agus']},
+       {t:'Tarde',  d:['Romi','Romi','Romi','Romi','Sofi','Romi','Romi']},
+       {t:'Noche',  d:['Flor','Joha','Joha','Joha','Joha','Joha','Joha']},
+     ]},
+    {panel:'Age 25', bg:'#00B0F0', tc:'#000',
+     turnos:[
+       {t:'Mañana', d:['Cami','Cami','Lud','Cami','Cami','Cami','Cami']},
+       {t:'Tarde',  d:['Sofi','Thiago','Thiago','Thiago','Thiago','Thiago','Thiago']},
+       {t:'Noche',  d:['May','May','Flor','May','May','May','May']},
+     ]},
+    {panel:'SM', bg:'#e0e0e0', tc:'#000',
+     turnos:[
+       {t:'Mañana', d:['Rafa','Rafa','Rafa','Rafa','Rafa','Rafa','Rafa']},
+       {t:'Tarde',  d:['Bri','Bri','Bri','Sofi','Bri','Bri','Bri']},
+       {t:'Noche',  d:['Mile','Mile','Mile','Mile','Mile','Mile','Flor']},
+     ]},
+  ];
+
+  // Reemplazantes fijos (celda roja oscura)
+  const REEMPLAZANTES = new Set(['Lud','Sofi','Flor','Valen','Guada','Gua']);
+
+  let h = `<div class="shdr">Tabla de Francos</div>
+  <div style="font-size:10px;color:#555;padding:3px 6px;margin-bottom:6px">
+    <span style="background:#C00000;color:#fff;padding:1px 6px;border-radius:2px">Rojo</span> = Reemplazante
+  </div>`;
+
+  GRUPOS.forEach((grp, gi) => {
+    h += `<table style="margin-bottom:10px">
+      <thead>
+        <tr>
+          <th colspan="8" style="background:${grp.bg};color:${grp.tc};text-align:left;padding:4px 8px;font-size:12px">${grp.panel}</th>
+        </tr>
+        <tr>
+          <th style="width:70px"></th>`;
+    DIAS.forEach(d => h += `<th style="min-width:70px">${d}</th>`);
+    h += `</tr></thead><tbody>`;
+
+    grp.turnos.forEach((turno, ti) => {
+      h += `<tr>
+        <td style="font-weight:700;background:${grp.bg};color:${grp.tc};text-align:center">${turno.t}</td>`;
+      turno.d.forEach((persona, di) => {
+        const key = `fra_g${gi}_t${ti}_d${di}`;
+        const val = g(key) || persona;
+        const esReemplazo = REEMPLAZANTES.has(val);
+        const bg = esReemplazo ? '#C00000' : '#fff';
+        const tc = esReemplazo ? '#fff' : '#000';
+        h += `<td style="text-align:center;background:${bg}">
+          <input class="c" id="${key}" value="${val}"
+            oninput="onInp(this);colorFranco(this)"
+            style="text-align:center;color:${tc};background:transparent;min-width:55px">
+        </td>`;
+      });
+      h += `</tr>`;
+    });
+    h += `</tbody></table>`;
+  });
+
+  // Tablas de reemplazantes
+  window.REEMPL_DATA_GLOBAL = [
+    {panel:'Lud',   bg:'#FF0000', tc:'#fff', turnos:[{t:'M',d:['—','18','25','24','22','21','23']},{t:'T',d:['—','—','—','—','—','—','—']},{t:'N',d:['—','—','—','—','—','—','—']}]},
+    {panel:'Sofi',  bg:'#FF69B4', tc:'#fff', turnos:[{t:'M',d:['—','—','—','—','—','—','—']},{t:'T',d:['25','18','19','SM','24','22','—']},{t:'N',d:['—','—','—','—','—','—','—']}]},
+    {panel:'Flor',  bg:'#FF0000', tc:'#fff', turnos:[{t:'M',d:['—','—','—','—','—','—','—']},{t:'T',d:['—','—','—','—','—','—','—']},{t:'N',d:['24','—','25','23','18','21','SM']}]},
+    {panel:'Valen', bg:'#FF69B4', tc:'#fff', turnos:[{t:'M',d:['—','—','—','—','—','—','—']},{t:'T',d:['—','—','—','—','—','—','—']},{t:'N',d:['22','19','—','—','—','—','21']}]},
+  ];
+  h += '<div style="margin-top:14px"><div class="section-header" style="background:#555;color:#fff;padding:4px 8px;margin-bottom:6px;font-size:11px">Tabla de Reemplazantes</div>';
+  h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+  window.REEMPL_DATA_GLOBAL.forEach(grp => {
+    h += '<table><thead><tr><th colspan="8" style="background:'+grp.bg+';color:'+grp.tc+';text-align:left;padding:4px 8px">'+grp.panel+'</th></tr><tr><th></th>';
+    DIAS.forEach(d => { h += '<th style="text-align:center">'+d+'</th>'; });
+    h += '</tr></thead><tbody>';
+    grp.turnos.forEach(t => {
+      h += '<tr><td class="bold">'+t.t+'</td>';
+      t.d.forEach(v => { h += v==='—' ? '<td></td>' : '<td style="background:#C00000;color:#fff;text-align:center;font-weight:700">'+v+'</td>'; });
+      h += '</tr>';
+    });
+    h += '</tbody></table>';
+  });
+  h += '</div></div>';
+
+  el.innerHTML = h;
+}
+
+// Modal observaciones
+let _obsCurrentKey = null;
+
+function obsClick(btn) {
+  openObsModal(btn.dataset.key, btn.dataset.titulo);
+}
+
+function openObsModal(dataKey, titulo) {
+  _obsCurrentKey = dataKey;
+  const val = g(dataKey) || '';
+  document.getElementById('obsTextarea').value = val;
+  document.getElementById('obsModalTitle').textContent = '📝 ' + titulo;
+  document.getElementById('obsOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('obsTextarea').focus(), 100);
+}
+
+function closeObsModal() {
+  document.getElementById('obsOverlay').classList.remove('open');
+  _obsCurrentKey = null;
+}
+
+function saveObs() {
+  if (!_obsCurrentKey) return;
+  const val = document.getElementById('obsTextarea').value;
+  s(_obsCurrentKey, val);
+  // Actualizar preview
+  const prevEl = document.getElementById(_obsCurrentKey + '_prev');
+  if (prevEl) prevEl.textContent = val ? '💬 ' + val.substring(0,30) + (val.length>30?'...':'') : '';
+  autoSave();
+  closeObsModal();
+}
+
+// Cerrar modal con Escape
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeObsModal(); });
+
+
+// Colorear select de tipo de sueldo
+function colorTipo(sel) {
+  sel.className = 'sel-tipo tipo-' + sel.value;
+}
+
+// Colorear todos los selects al renderizar
+function colorTiposAll() {
+  document.querySelectorAll('.sel-tipo').forEach(s => colorTipo(s));
+}
+
+// Colorear celda de franco si es reemplazante
+const REEMPLAZANTES_SET = new Set(['Lud','Sofi','Flor','Valen','Guada','Gua']);
+function colorFranco(inp) {
+  const es = REEMPLAZANTES_SET.has(inp.value.trim());
+  inp.parentElement.style.background = es ? '#C00000' : '#fff';
+  inp.style.color = es ? '#fff' : '#000';
+}
+
+// ── RENDER PRODUCTIVIDAD ─────────────────────────────────────
+const CRITERIOS = [
+  {key:'whatsapp', label:'Respuesta WhatsApp'},
+  {key:'cordial',  label:'Cordialidad'},
+  {key:'errores',  label:'Sin errores'},
+  {key:'puntual',  label:'Puntualidad'},
+  {key:'otros',    label:'Otros'},
+];
+
+const PANEL_COL = {
+  'Age 18':{bg:'#fff9c4',tc:'#7c6200'},
+  'Age 19':{bg:'#ffe0b2',tc:'#7c3d00'},
+  'Age 21':{bg:'#ffcdd2',tc:'#7c1b1b'},
+  'Age 22':{bg:'#c8e6c9',tc:'#1b5e20'},
+  'Age 23':{bg:'#bbdefb',tc:'#0d47a1'},
+  'Age 24':{bg:'#e1bee7',tc:'#4a148c'},
+  'Age 25':{bg:'#b2ebf2',tc:'#004d5c'},
+  'Sm'    :{bg:'#f5f5f5',tc:'#424242'},
+};
+
+const PROD_CSS = `
+  .kb{font-family:system-ui,-apple-system,sans-serif;padding:4px 0}
+  .kb-hdr{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+  .kb-title{font-size:15px;font-weight:700;color:#172b4d;letter-spacing:-.01em}
+  .kb-sub{font-size:11px;color:#5e6c84}
+  .kb-ctrl{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .kb-ctrl label{font-size:11px;color:#5e6c84}
+  .kb-ctrl select,.kb-ctrl input{font-size:12px;padding:5px 9px;border:1px solid #dfe1e6;border-radius:4px;background:#fff;color:#172b4d;outline:none}
+  .kb-ctrl input{width:110px;text-align:right}
+  .kb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+  .kb-card{background:#fff;border-radius:8px;padding:13px;box-shadow:0 1px 3px rgba(9,30,66,.12),0 0 1px rgba(9,30,66,.08);display:flex;flex-direction:column;gap:10px}
+  .kb-card-top{display:flex;align-items:flex-start;justify-content:space-between}
+  .kb-name{font-size:13px;font-weight:700;color:#172b4d}
+  .kb-turno{font-size:10px;color:#5e6c84;margin-top:2px}
+  .kb-badge{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600;white-space:nowrap}
+  .kb-crits{display:flex;flex-direction:column;gap:5px}
+  .kb-crit-row{display:flex;align-items:center;justify-content:space-between;gap:6px}
+  .kb-crit-name{font-size:11px;color:#5e6c84;flex:1}
+  .kb-crit-btn{font-size:10px;padding:2px 8px;border-radius:4px;border:none;cursor:pointer;font-weight:500;white-space:nowrap}
+  .kb-crit-blank{background:#f4f5f7;color:#97a0af}
+  .kb-crit-blank:hover{background:#ebecf0;color:#172b4d}
+  .kb-crit-done{background:#e3fcef;color:#006644}
+  .kb-footer{display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px solid #f4f5f7;margin-top:auto}
+  .kb-premio-on{font-size:11px;font-weight:700;color:#006644}
+  .kb-premio-off{font-size:11px;color:#97a0af}
+  .kb-check{width:15px;height:15px;accent-color:#0052cc;cursor:pointer}
+  .kb-sep{height:0.5px;background:#dfe1e6;margin:18px 0}
+  .kb-rank-title{font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px}
+  .kb-rank-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
+  .kb-rank-card{background:#fff;border-radius:8px;padding:10px 13px;box-shadow:0 1px 3px rgba(9,30,66,.1);display:flex;align-items:center;gap:10px}
+  .kb-medal{font-size:18px;width:26px;text-align:center}
+  .kb-rname{font-size:13px;font-weight:700;color:#172b4d}
+  .kb-rsub{font-size:10px;color:#5e6c84;margin-top:1px}
+  .kb-ramt{font-size:13px;font-weight:700;color:#006644;margin-left:auto}
+  .kb-empty{text-align:center;padding:20px;color:#c1c7d0;font-size:13px}
+  .kb-bg{background:#f4f5f7;padding:16px;border-radius:10px}
+`;
+
+function renderProductividad() {
+  const el = document.getElementById('sh_prod');
+  if (!el) return;
+
+  const semanas = ['Semana 1','Semana 2','Semana 3','Semana 4'];
+  const montoKey = 'prod_monto_max';
+  const montoVal = g(montoKey) || '35000';
+  const si = g('prod_sem_sel') || '0';
+  const monto = parseFloat((montoVal+'').replace(/\./g,'').replace(',','.')) || 35000;
+
+  let h = `<style>${PROD_CSS}</style><div class="kb kb-bg">`;
+
+  // Header
+  h += `<div class="kb-hdr">
+    <div>
+      <div class="kb-title">Productividad</div>
+      <div class="kb-sub">${MES} · ${semanas[parseInt(si)]}</div>
+    </div>
+    <div class="kb-ctrl">
+      <label>Semana</label>
+      <select id="prod_sem_sel" onchange="onInp(this);renderProductividad()">`;
+  semanas.forEach((sem,i) => h += `<option value="${i}" ${si==i?'selected':''}>${sem}</option>`);
+  h += `</select>
+      <label>Premio $</label>
+      <input id="${montoKey}" value="${montoVal}" oninput="onInp(this)" onchange="onInp(this);renderProductividad()" placeholder="35000">
+    </div>
+  </div>`;
+
+  // Cards en bloques de 2 paneles por fila
+  h += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">`;
+
+  PANELES.forEach((panel, pi) => {
+    const col = PANEL_COL[panel] || {bg:'#f5f5f5',tc:'#444'};
+
+    h += `<div style="background:#fff;border-radius:10px;padding:12px;box-shadow:0 1px 3px rgba(9,30,66,.1)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid ${col.bg}">
+        <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:4px;background:${col.bg};color:${col.tc}">${panel}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">`;
+
+    PERSONAL[pi].forEach((per, ri) => {
+      const base = `prod_${si}_p${pi}_r${ri}`;
+      const tieneP = g(`${base}_premio_otorgado`) === '1';
+
+      h += `<div class="kb-card" style="box-shadow:none;border:1px solid #f0f0f0;padding:10px">
+        <div>
+          <div class="kb-name">${per.n}</div>
+          <div class="kb-turno">Turno ${per.t}</div>
+        </div>
+        <div class="kb-crits" style="margin-top:8px">`;
+
+      CRITERIOS.forEach(c => {
+        const key = `${base}_${c.key}`;
+        const tieneNota = !!g(key);
+        h += `<div class="kb-crit-row">
+          <span class="kb-crit-name">${c.label}</span>
+          <button class="kb-crit-btn ${tieneNota?'kb-crit-done':'kb-crit-blank'}"
+            data-key="${key}" data-titulo="${c.label} — ${per.n} (${panel})"
+            onclick="obsClick(this)">
+            ${tieneNota ? '✓' : '+'}
+          </button>
+        </div>`;
+      });
+
+      h += `</div>
+        <div class="kb-footer" style="margin-top:8px">
+          <span class="${tieneP?'kb-premio-on':'kb-premio-off'}">
+            ${tieneP ? '$'+Math.round(monto).toLocaleString('es-AR') : 'Sin premio'}
+          </span>
+          <input type="checkbox" class="kb-check" id="${base}_premio_otorgado"
+            ${tieneP?'checked':''}
+            onchange="s(this.id,this.checked?'1':'0');autoSave();renderProductividad()">
+        </div>
+      </div>`;
+    });
+
+    h += `</div></div>`;
+  });
+
+  h += `</div>`;
+
+  // Ranking
+  const ganadores = [];
+  PANELES.forEach((panel,pi) => {
+    PERSONAL[pi].forEach((per,ri) => {
+      if (g(`prod_${si}_p${pi}_r${ri}_premio_otorgado`) === '1')
+        ganadores.push({nom:per.n, panel, t:per.t});
+    });
+  });
+
+  h += `<div class="kb-sep"></div>
+  <div class="kb-rank-title">Agentes con premio · ${semanas[parseInt(si)]}</div>`;
+
+  if (ganadores.length === 0) {
+    h += `<div class="kb-empty">Ningún agente seleccionado aún</div>`;
+  } else {
+    const medals = ['🥇','🥈','🥉'];
+    h += `<div class="kb-rank-grid">`;
+    ganadores.forEach((gn,i) => {
+      h += `<div class="kb-rank-card">
+        <div class="kb-medal">${medals[i]||'🏅'}</div>
+        <div>
+          <div class="kb-rname">${gn.nom}</div>
+          <div class="kb-rsub">${gn.panel} · ${gn.t}</div>
+        </div>
+        <div class="kb-ramt">$${Math.round(monto).toLocaleString('es-AR')}</div>
+      </div>`;
+    });
+    h += `</div>`;
+  }
+
+  h += `</div>`;
+  el.innerHTML = h;
+}
+
+// ── RENDER ALL ───────────────────────────────────────────────
+function renderAll() {
+  const mes = document.getElementById('mesSelect').value;
+  MES = mes;
+  renderSemana('sh_s1', `${mes} — Semana 1`);
+  renderSemana('sh_s2', `${mes} — Semana 2`);
+  renderSemana('sh_s3', `${mes} — Semana 3`);
+  renderSemana('sh_s4', `${mes} — Semana 4`);
+  renderCargas();
+  renderSueldo('sh_su1', `Sueldos Semana 1 — ${mes}`);
+  renderSueldo('sh_su2', `Sueldos Semana 2 — ${mes}`);
+  renderSueldo('sh_su3', `Sueldos Semana 3 — ${mes}`);
+  renderSueldo('sh_su4', `Sueldos Semana 4 — ${mes}`);
+  renderDirecciones();
+  renderFrancos();
+  renderProductividad();
+  // Mostrar flotante por defecto en Semana 1
+  const flo = document.getElementById('resFlotante');
+  if (flo) { flo.classList.add('visible'); actualizarFlotante('sh_s1'); }
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+// Exponer funciones globalmente
+
+document.addEventListener('DOMContentLoaded', async function() {
+  const ov = document.getElementById('obsOverlay');
+  if (ov) ov.addEventListener('click', function(e){ if(e.target===this) closeObsModal(); });
+  await cargarStorage();
+  renderAll();
+  // Esperar a Firebase y cargar sueldos/bonif
+  // Escuchar cuando los sueldos estén cargados desde Firebase
+  window.addEventListener('sueldosCargados', (e) => {
+    const cache = window._sueldosCache || {};
+    const PANEL_TO_AG = {
+      'Age 18':'AG 18','Age 19':'AG 19','Age 21':'AG 21','Age 22':'AG 22',
+      'Age 23':'AG 23','Age 24':'AG 24','Age 25':'AG 25','Sm':'SIEMPRE MONO'
+    };
+    const shId = document.querySelector('.sheet.active')?.id;
+    if (!shId || !shId.match(/^sh_s[1-4]$/)) return;
+    const semIdx = ['sh_s1','sh_s2','sh_s3','sh_s4'].indexOf(shId);
+    const offset = parseInt(g(shId+'_offset')) || 0;
+    const lunes  = luneSemana(MES, semIdx + offset);
+    for (let d=0; d<7; d++) {
+      const dt = new Date(lunes); dt.setDate(lunes.getDate()+d);
+      const fecha = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+      const dk = `${shId}_d${d}`;
+      PANELES.forEach((panel, pi) => {
+        const agKey = PANEL_TO_AG[panel];
+        const diaData = cache[agKey]?.[fecha];
+        if (!diaData) return;
+        let sue=0, bon=0;
+        ['manana','tarde','noche'].forEach(t => {
+          sue += parseFloat(diaData[t]?.sueldo || 0);
+          bon += parseFloat(diaData[t]?.bonos  || 0);
+        });
+        if (sue > 0) {
+          s(`${dk}_p${pi}_sue`, Math.round(sue).toString());
+          const el = document.getElementById(`${dk}_p${pi}_sue`);
+          if (el) { el.value = Math.round(sue).toLocaleString('es-AR'); el.style.background='rgba(52,211,153,.08)'; }
+        }
+        if (bon > 0) {
+          s(`${dk}_p${pi}_bon`, Math.round(bon).toString());
+          const el = document.getElementById(`${dk}_p${pi}_bon`);
+          if (el) { el.value = Math.round(bon).toLocaleString('es-AR'); el.style.background='rgba(56,189,248,.08)'; }
+        }
+      });
+      recalcDia(shId, d);
+    }
+    recalcSemRes(shId);
+  });
+
+  // Cargar sueldos cuando Firebase esté listo
+  const esperarFb = () => new Promise(resolve => {
+    if (window._fbReady && window._db) { resolve(); return; }
+    window.addEventListener('fbReady', resolve, { once: true });
+    setTimeout(resolve, 5000);
+  });
+  await esperarFb();
+  if (window._cargarYCompletarSueldos) {
+    const shId = document.querySelector('.sheet.active')?.id || 'sh_s1';
+    window._MES = MES;
+    await window._cargarYCompletarSueldos(shId);
+  }
+});
+</script>
+<script>
+// Desregistrar service worker si existe
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(r => r.forEach(sw => sw.unregister()));
+}
+</script>
+<!-- Modal observaciones -->
+<div class="obs-overlay" id="obsOverlay">
+  <div class="obs-modal">
+    <div class="obs-modal-hdr">
+      <span id="obsModalTitle">📝 Observación</span>
+      <button class="obs-modal-close" onclick="closeObsModal()">✕</button>
+    </div>
+    <div class="obs-modal-body">
+      <textarea class="obs-textarea" id="obsTextarea" placeholder="Escribí la observación acá..."></textarea>
+    </div>
+    <div class="obs-modal-footer">
+      <button class="obs-cancel" onclick="closeObsModal()">Cancelar</button>
+      <button class="obs-ok" onclick="saveObs()">✓ Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Resumen flotante -->
+<div class="res-flo" id="resFlotante">
+  <div class="res-flo-title" id="resFloTitulo">Semana 1</div>
+  <div class="res-flo-paneles" id="resFloPaneles"></div>
+  <div class="res-flo-row">
+    <span class="res-flo-lbl">Retiros Martin</span>
+    <span class="res-flo-val" id="resFloRetM">—</span>
+  </div>
+  <div class="res-flo-row">
+    <span class="res-flo-lbl">Retiros Lezcano</span>
+    <span class="res-flo-val" id="resFloRetL">—</span>
+  </div>
+  <div class="res-flo-row">
+    <span class="res-flo-lbl">Total Gastos</span>
+    <span class="res-flo-val gasto" id="resFloGasto">—</span>
+  </div>
+</div>
+</body>
+</html>
