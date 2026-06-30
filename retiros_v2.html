@@ -637,10 +637,6 @@ function renderSemana(shId, titulo) {
       <span class="period-lbl" id="${shId}_periodo_lbl">${periodo}</span>
       <button class="arr-btn" onclick="moveSem('${shId}',1)" title="Semana siguiente">&#8594;</button>
     </div>
-    <button onclick="completarSueldosBonif('${shId}')"
-      style="margin-left:auto;background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;padding:4px 12px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.5px">
-      ⬇ Importar Sueldos
-    </button>
   </div>`;
 
   for (let d=0; d<7; d++) {
@@ -817,6 +813,8 @@ function renderSemana(shId, titulo) {
       if (el && val) el.textContent = '💬 ' + val.substring(0,30) + (val.length>30?'...':'');
     });
   }
+  // Completar sueldos y bonificaciones automáticamente desde turnosData
+  completarSueldosBonif(shId);
 }
 
 // ── RENDER CARGAS ────────────────────────────────────────────
