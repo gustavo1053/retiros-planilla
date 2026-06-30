@@ -1642,6 +1642,11 @@ function renderAll() {
 }
 
 // ── INIT ─────────────────────────────────────────────────────
+// Exponer funciones globalmente
+window.cargarTurnosData = cargarTurnosData;
+window.completarSueldosBonif = completarSueldosBonif;
+window.TURNOS_CACHE = TURNOS_CACHE;
+
 document.addEventListener('DOMContentLoaded', async function() {
   const ov = document.getElementById('obsOverlay');
   if (ov) ov.addEventListener('click', function(e){ if(e.target===this) closeObsModal(); });
@@ -1651,16 +1656,12 @@ document.addEventListener('DOMContentLoaded', async function() {
   const esperarFb = () => new Promise(resolve => {
     if (window._fbReady && window._db) { resolve(); return; }
     window.addEventListener('fbReady', resolve, { once: true });
-    setTimeout(resolve, 5000); // timeout 5s
+    setTimeout(resolve, 5000);
   });
   await esperarFb();
   await cargarTurnosData();
-  // Re-renderizar semana activa con sueldos
-  const semActiva = document.querySelector('.stab.active');
-  if (semActiva) {
-    const shId = document.querySelector('.sheet.active')?.id;
-    if (shId && shId.match(/^sh_s[1-4]$/)) await completarSueldosBonif(shId);
-  }
+  const shId = document.querySelector('.sheet.active')?.id;
+  if (shId && shId.match(/^sh_s[1-4]$/)) await completarSueldosBonif(shId);
 });
 </script>
 <script>
