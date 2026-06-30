@@ -30,6 +30,44 @@
   window._getDoc = getDoc;
   window._setDoc = setDoc;
   window._fbReady = true;
+
+  // Cargar sueldos desde retiros_sueldos y completar planilla
+  async function cargarYCompletarSueldos(shId) {
+    try {
+      const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                     'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      const MES = window._MES || 'Junio 2026';
+      const [mesNom, anio] = MES.split(' ');
+      const m = meses.indexOf(mesNom);
+      const y = parseInt(anio);
+      const diasEnMes = new Date(y, m+1, 0).getDate();
+      const fechas = [];
+      for (let d=1; d<=diasEnMes; d++) {
+        fechas.push(`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
+      }
+      // Leer todas las fechas del mes
+      const cache = {};
+      await Promise.all(fechas.map(async fecha => {
+        try {
+          const snap = await getDoc(doc(db, 'retiros_sueldos', fecha));
+          if (snap.exists() && snap.data().agentes) {
+            Object.entries(snap.data().agentes).forEach(([agKey, turnos]) => {
+              if (!cache[agKey]) cache[agKey] = {};
+              cache[agKey][fecha] = turnos;
+            });
+          }
+        } catch(e) {}
+      }));
+      window._sueldosCache = cache;
+      // Disparar evento para que el script principal complete los inputs
+      window.dispatchEvent(new CustomEvent('sueldosCargados', { detail: { shId } }));
+    } catch(e) {
+      console.warn('Error cargando sueldos:', e);
+    }
+  }
+
+  window._cargarYCompletarSueldos = cargarYCompletarSueldos;
+  window._fbReady = true;
   window.dispatchEvent(new Event('fbReady'));
 </script>
 <style>
@@ -1650,15 +1688,59 @@ document.addEventListener('DOMContentLoaded', async function() {
   await cargarStorage();
   renderAll();
   // Esperar a Firebase y cargar sueldos/bonif
+  // Escuchar cuando los sueldos estén cargados desde Firebase
+  window.addEventListener('sueldosCargados', (e) => {
+    const cache = window._sueldosCache || {};
+    const PANEL_TO_AG = {
+      'Age 18':'AG 18','Age 19':'AG 19','Age 21':'AG 21','Age 22':'AG 22',
+      'Age 23':'AG 23','Age 24':'AG 24','Age 25':'AG 25','Sm':'SIEMPRE MONO'
+    };
+    const shId = document.querySelector('.sheet.active')?.id;
+    if (!shId || !shId.match(/^sh_s[1-4]$/)) return;
+    const semIdx = ['sh_s1','sh_s2','sh_s3','sh_s4'].indexOf(shId);
+    const offset = parseInt(g(shId+'_offset')) || 0;
+    const lunes  = luneSemana(MES, semIdx + offset);
+    for (let d=0; d<7; d++) {
+      const dt = new Date(lunes); dt.setDate(lunes.getDate()+d);
+      const fecha = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+      const dk = `${shId}_d${d}`;
+      PANELES.forEach((panel, pi) => {
+        const agKey = PANEL_TO_AG[panel];
+        const diaData = cache[agKey]?.[fecha];
+        if (!diaData) return;
+        let sue=0, bon=0;
+        ['manana','tarde','noche'].forEach(t => {
+          sue += parseFloat(diaData[t]?.sueldo || 0);
+          bon += parseFloat(diaData[t]?.bonos  || 0);
+        });
+        if (sue > 0) {
+          s(`${dk}_p${pi}_sue`, Math.round(sue).toString());
+          const el = document.getElementById(`${dk}_p${pi}_sue`);
+          if (el) { el.value = Math.round(sue).toLocaleString('es-AR'); el.style.background='rgba(52,211,153,.08)'; }
+        }
+        if (bon > 0) {
+          s(`${dk}_p${pi}_bon`, Math.round(bon).toString());
+          const el = document.getElementById(`${dk}_p${pi}_bon`);
+          if (el) { el.value = Math.round(bon).toLocaleString('es-AR'); el.style.background='rgba(56,189,248,.08)'; }
+        }
+      });
+      recalcDia(shId, d);
+    }
+    recalcSemRes(shId);
+  });
+
+  // Cargar sueldos cuando Firebase esté listo
   const esperarFb = () => new Promise(resolve => {
     if (window._fbReady && window._db) { resolve(); return; }
     window.addEventListener('fbReady', resolve, { once: true });
     setTimeout(resolve, 5000);
   });
   await esperarFb();
-  await cargarTurnosData();
-  const shId = document.querySelector('.sheet.active')?.id;
-  if (shId && shId.match(/^sh_s[1-4]$/)) await completarSueldosBonif(shId);
+  if (window._cargarYCompletarSueldos) {
+    const shId = document.querySelector('.sheet.active')?.id || 'sh_s1';
+    window._MES = MES;
+    await window._cargarYCompletarSueldos(shId);
+  }
 });
 </script>
 <script>
