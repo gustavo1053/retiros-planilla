@@ -1647,6 +1647,20 @@ document.addEventListener('DOMContentLoaded', async function() {
   if (ov) ov.addEventListener('click', function(e){ if(e.target===this) closeObsModal(); });
   await cargarStorage();
   renderAll();
+  // Esperar a Firebase y cargar sueldos/bonif
+  const esperarFb = () => new Promise(resolve => {
+    if (window._fbReady && window._db) { resolve(); return; }
+    window.addEventListener('fbReady', resolve, { once: true });
+    setTimeout(resolve, 5000); // timeout 5s
+  });
+  await esperarFb();
+  await cargarTurnosData();
+  // Re-renderizar semana activa con sueldos
+  const semActiva = document.querySelector('.stab.active');
+  if (semActiva) {
+    const shId = document.querySelector('.sheet.active')?.id;
+    if (shId && shId.match(/^sh_s[1-4]$/)) await completarSueldosBonif(shId);
+  }
 });
 </script>
 <script>
