@@ -31,7 +31,13 @@
   window._setDoc = setDoc;
   window._fbReady = true;
 
-  // Cargar sueldos/bonif desde retiros_sueldos Firebase
+  // Cargar sueldos desde retiros_sueldos y bonif desde bonificaciones
+  const AG_MAP = {
+    'AG 18':'AGE18','AG 19':'AGE19','AG 21':'AGE21','AG 22':'AGE22',
+    'AG 23':'AGE23','AG 24':'AGE24','AG 25':'AGE25','SIEMPRE MONO':'SIEMPREMONO'
+  };
+  const SH_MAP = {'manana':'TM','tarde':'TT','noche':'TN'};
+
   async function cargarYCompletarSueldos(shId, mes) {
     try {
       const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
@@ -44,21 +50,44 @@
       for (let d=1; d<=diasEnMes; d++)
         fechas.push(`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
 
-      const cache = {};
+      const cacheSue = {};
+      const cacheBon = {};
+
       await Promise.all(fechas.map(async fecha => {
         try {
-          const snap = await getDoc(doc(db, 'retiros_sueldos', fecha));
-          if (snap.exists() && snap.data().agentes) {
-            Object.entries(snap.data().agentes).forEach(([agKey, turnos]) => {
-              if (!cache[agKey]) cache[agKey] = {};
-              cache[agKey][fecha] = turnos;
+          // Sueldos
+          const snapS = await getDoc(doc(db, 'retiros_sueldos', fecha));
+          if (snapS.exists() && snapS.data().agentes) {
+            Object.entries(snapS.data().agentes).forEach(([agKey, turnos]) => {
+              if (!cacheSue[agKey]) cacheSue[agKey] = {};
+              cacheSue[agKey][fecha] = turnos;
+            });
+          }
+          // Bonificaciones
+          const snapB = await getDoc(doc(db, 'bonificaciones', fecha));
+          if (snapB.exists()) {
+            const bonData = snapB.data();
+            // bonData = {AGE18: {TM: valor, TT: valor, TN: valor}, ...}
+            Object.entries(bonData).forEach(([agId, turnos]) => {
+              // Convertir AGE18 → AG 18
+              const agKey = Object.entries(AG_MAP).find(([k,v]) => v===agId)?.[0];
+              if (!agKey) return;
+              if (!cacheBon[agKey]) cacheBon[agKey] = {};
+              cacheBon[agKey][fecha] = {};
+              // Convertir TM→manana, TT→tarde, TN→noche
+              Object.entries(turnos).forEach(([shKey, val]) => {
+                const tKey = Object.entries(SH_MAP).find(([k,v]) => v===shKey)?.[0];
+                if (tKey) cacheBon[agKey][fecha][tKey] = val;
+              });
             });
           }
         } catch(e) {}
       }));
-      window._sueldosCache = cache;
+
+      window._sueldosCache = cacheSue;
+      window._bonifCache   = cacheBon;
       window.dispatchEvent(new CustomEvent('sueldosCargados', {detail:{shId}}));
-    } catch(e) { console.warn('Error sueldos:', e); }
+    } catch(e) { console.warn('Error sueldos/bonif:', e); }
   }
 
   window._cargarYCompletarSueldos = cargarYCompletarSueldos;
@@ -1471,10 +1500,19 @@ document.addEventListener('DOMContentLoaded', async function() {
           const el = document.getElementById(`${dk}_p${pi}_sue`);
           if (el) { el.value = Math.round(sue).toLocaleString('es-AR'); el.style.background='#e8f5e9'; }
         }
-        if (bon > 0) {
-          s(`${dk}_p${pi}_bon`, Math.round(bon).toString());
-          const el = document.getElementById(`${dk}_p${pi}_bon`);
-          if (el) { el.value = Math.round(bon).toLocaleString('es-AR'); el.style.background='#e3f2fd'; }
+        // Bonificaciones desde _bonifCache
+        const bonCache = window._bonifCache || {};
+        const bonDia = bonCache[agKey]?.[fecha];
+        let bonTotal = 0;
+        if (bonDia) {
+          ['manana','tarde','noche'].forEach(t => {
+            bonTotal += parseFloat(bonDia[t] || 0);
+          });
+        }
+        if (bonTotal > 0) {
+          s(`${dk}_p${pi}_bon`, Math.round(bonTotal).toString());
+          const elB = document.getElementById(`${dk}_p${pi}_bon`);
+          if (elB) { elB.value = Math.round(bonTotal).toLocaleString('es-AR'); elB.style.background='#e3f2fd'; }
         }
         recalcDia(shId, d);
       });
