@@ -1500,13 +1500,11 @@ document.addEventListener('DOMContentLoaded', async function() {
           const el = document.getElementById(`${dk}_p${pi}_sue`);
           if (el) { el.value = Math.round(sue).toLocaleString('es-AR'); el.style.background='#e8f5e9'; }
         }
-        // Bonificaciones desde _bonifCache
-        const bonCache = window._bonifCache || {};
-        const bonDia = bonCache[agKey]?.[fecha];
+        // Bonificaciones desde _sueldosCache (mismo doc que sueldos)
         let bonTotal = 0;
-        if (bonDia) {
+        if (diaData) {
           ['manana','tarde','noche'].forEach(t => {
-            bonTotal += parseFloat(bonDia[t] || 0);
+            bonTotal += parseFloat(diaData[t]?.bonos || 0);
           });
         }
         if (bonTotal > 0) {
