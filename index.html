@@ -1444,7 +1444,7 @@ function renderProductividad() {
 }
 
 // ── RENDER MENSUAL ───────────────────────────────────────────
-function renderMensual(desde, hasta) {
+function renderMensual(diaNum) {
   const el = document.getElementById('sh_mes');
   if (!el) return;
 
@@ -1456,164 +1456,157 @@ function renderMensual(desde, hasta) {
   const diasEnMes = new Date(y, m+1, 0).getDate();
   const pad = n => String(n).padStart(2,'0');
 
-  // Fechas del mes
-  const todasFechas = [];
+  // Día a mostrar
+  if (diaNum !== undefined) DIA_ACTUAL = diaNum;
+  if (DIA_ACTUAL < 1) DIA_ACTUAL = 1;
+  if (DIA_ACTUAL > diasEnMes) DIA_ACTUAL = diasEnMes;
+
+  const dia = DIA_ACTUAL;
+  const dt = new Date(y, m, dia);
+  const DIAS_NOM = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const diaNom = DIAS_NOM[dt.getDay()];
+  const isoStr = `${y}-${pad(m+1)}-${pad(dia)}`;
+  const esFer = esFeriado(dt);
+  const ferNom = esFer ? nombreFeriado(dt) : '';
+  const dk = `mes_${y}${pad(m+1)}${pad(dia)}`;
+
+  // Calcular resumen mensual completo
+  let totRetLMes=0, totRetMMes=0, totGastoMes=0, totGeneralMes=0;
   for (let d=1; d<=diasEnMes; d++) {
-    todasFechas.push(new Date(y, m, d));
+    const dkd = `mes_${y}${pad(m+1)}${pad(d)}`;
+    totRetLMes   += nv(g(`${dkd}_retL`));
+    totRetMMes   += nv(g(`${dkd}_retM`));
+    totGastoMes  += nv(g(`${dkd}_gasto`));
+    PANELES.forEach((_,pi) => {
+      ['m','t','n'].forEach(t => totGeneralMes += nv(g(`${dkd}_p${pi}_${t}`)));
+    });
   }
 
-  // Filtro
-  const desdeDate = desde ? new Date(desde+'T00:00:00') : new Date(y, m, 1);
-  const hastaDate = hasta ? new Date(hasta+'T00:00:00') : new Date(y, m, diasEnMes);
-  const fechasFiltradas = todasFechas.filter(dt => dt >= desdeDate && dt <= hastaDate);
+  let h = `
+  <!-- Navegador de días -->
+  <div style="display:flex;align-items:center;gap:10px;padding:10px 0 12px;border-bottom:1px solid #e5e7eb;margin-bottom:12px;flex-wrap:wrap">
+    <button class="arr-btn" onclick="navegarDia(-1)" style="width:32px;height:32px;font-size:18px" title="Día anterior">&#8592;</button>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:12px;color:#888">Día</span>
+      <input type="number" id="diaInput" value="${dia}" min="1" max="${diasEnMes}"
+        onchange="navegarDiaInput(this)"
+        style="width:55px;text-align:center;font-size:14px;font-weight:600;padding:4px 6px;border:1px solid #bbb;border-radius:6px;font-family:Calibri,Arial,sans-serif">
+      <span style="font-size:12px;color:#888">de ${diasEnMes}</span>
+    </div>
+    <button class="arr-btn" onclick="navegarDia(1)" style="width:32px;height:32px;font-size:18px" title="Día siguiente">&#8594;</button>
+    <div style="margin-left:8px;font-size:14px;font-weight:700;color:${esFer?'#C00000':'#1f3864'}">
+      ${diaNom} ${pad(dia)}/${pad(m+1)}/${y}
+      ${esFer?`<span style="font-size:11px;background:#C00000;color:#fff;padding:2px 8px;border-radius:10px;margin-left:6px">🗓 ${ferNom}</span>`:''}
+    </div>
+    <!-- Resumen mensual compacto -->
+    <div style="margin-left:auto;display:flex;gap:12px;font-size:11px;flex-wrap:wrap">
+      <span style="color:#888">Mes: <b style="color:#1f3864">$${fmt(totGeneralMes)}</b></span>
+      <span style="color:#888">Ret.M: <b style="color:#C00000">$${fmt(totRetMMes)}</b></span>
+      <span style="color:#888">Ret.L: <b style="color:#C00000">$${fmt(totRetLMes)}</b></span>
+      <span style="color:#888">Gastos: <b style="color:#c55a11">$${fmt(totGastoMes)}</b></span>
+    </div>
+  </div>
 
-  const DIAS_NOM = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  <!-- Tabla del día -->
+  <table>
+    <thead><tr>
+      <th style="width:100px">Panel</th>
+      <th style="width:110px">Mañana</th>
+      <th style="width:110px">Tarde</th>
+      <th style="width:110px">Noche</th>
+      <th style="width:100px;background:#e8f5e9">Sueldos</th>
+      <th style="width:100px;background:#e3f2fd">Bonif.</th>
+      <th style="width:100px;background:#ffe0b2">Total</th>
+    </tr></thead>
+    <tbody>`;
 
-  let h = `<div class="mes-filtro">
-    <label>Desde:</label>
-    <input type="date" id="filtroDesde" value="${desde||y+'-'+pad(m+1)+'-01'}"
-      min="${y}-${pad(m+1)}-01" max="${y}-${pad(m+1)}-${pad(diasEnMes)}">
-    <label>Hasta:</label>
-    <input type="date" id="filtroHasta" value="${hasta||y+'-'+pad(m+1)+'-'+pad(diasEnMes)}"
-      min="${y}-${pad(m+1)}-01" max="${y}-${pad(m+1)}-${pad(diasEnMes)}">
-    <button class="btn-filtrar" onclick="aplicarFiltro()">🔍 Filtrar</button>
-    <button class="btn-reset" onclick="renderMensual('','')">↺ Ver todo</button>
-    <span style="font-size:11px;color:#888">${fechasFiltradas.length} días</span>
-  </div>`;
-
-  // Resumen del período
-  let totRetL=0, totRetM=0, totGasto=0, totGeneral=0;
-  fechasFiltradas.forEach(dt => {
-    const dk = `mes_${y}${pad(m+1)}${pad(dt.getDate())}`;
-    totRetL   += nv(g(`${dk}_retL`));
-    totRetM   += nv(g(`${dk}_retM`));
-    totGasto  += nv(g(`${dk}_gasto`));
-    PANELES.forEach((_,pi) => {
-      ['m','t','n'].forEach(t => totGeneral += nv(g(`${dk}_p${pi}_${t}`)));
-    });
+  PANELES.forEach((p,pi) => {
+    h += `<tr>
+      <td class="${PC[pi]}">${p}</td>
+      <td>${inp(`${dk}_p${pi}_m`)}</td>
+      <td>${inp(`${dk}_p${pi}_t`)}</td>
+      <td>${inp(`${dk}_p${pi}_n`)}</td>
+      <td style="background:#f1f8f1">${inp(`${dk}_p${pi}_sue`)}</td>
+      <td style="background:#e8f4fd">${inp(`${dk}_p${pi}_bon`)}</td>
+      <td class="calc" id="${dk}_p${pi}_tot"></td>
+    </tr>`;
   });
 
-  h += `<div class="mes-resumen">
-    <div class="mes-res-item"><span class="mes-res-lbl">Total período</span><span class="mes-res-val">$${fmt(totGeneral)}</span></div>
-    <div class="mes-res-item"><span class="mes-res-lbl">Retiros Martin</span><span class="mes-res-val rojo">$${fmt(totRetM)}</span></div>
-    <div class="mes-res-item"><span class="mes-res-lbl">Retiros Lezcano</span><span class="mes-res-val rojo">$${fmt(totRetL)}</span></div>
-    <div class="mes-res-item"><span class="mes-res-lbl">Total Gastos</span><span class="mes-res-val rojo">$${fmt(totGasto)}</span></div>
-  </div>`;
+  h += `<tr class="rojo">
+      <td>Total Dia</td>
+      <td class="calc-r" id="${dk}_totM"></td>
+      <td class="calc-r" id="${dk}_totT"></td>
+      <td class="calc-r" id="${dk}_totN"></td>
+      <td class="calc-r" id="${dk}_totSue"></td>
+      <td class="calc-r" id="${dk}_totBon"></td>
+      <td class="calc-r" id="${dk}_totDia"></td>
+    </tr></tbody>
+  </table>
 
-  // Bloques por día
-  fechasFiltradas.forEach(dt => {
-    const dia = dt.getDate();
-    const dk = `mes_${y}${pad(m+1)}${pad(dia)}`;
-    const diaNom = DIAS_NOM[dt.getDay()];
-    const fechaStr = `${diaNom} ${pad(dia)}/${pad(m+1)}/${y}`;
-    const isoStr = `${y}-${pad(m+1)}-${pad(dia)}`;
-    const esFer = esFeriado(dt);
-    const ferNom = esFer ? nombreFeriado(dt) : '';
-
-    h += `<div class="dia-blk ${esFer?'dia-feriado':''}">
-      <div class="dia-blk-hdr">
-        <span>${fechaStr}</span>
-        ${esFer?`<span class="feriado-badge">🗓 ${ferNom}</span>`:''}
-      </div>
-      <table>
-        <thead><tr>
-          <th style="width:100px">Panel</th>
-          <th style="width:110px">Mañana</th>
-          <th style="width:110px">Tarde</th>
-          <th style="width:110px">Noche</th>
-          <th style="width:100px;background:#e8f5e9">Sueldos</th>
-          <th style="width:100px;background:#e3f2fd">Bonif.</th>
-          <th style="width:100px;background:#ffe0b2">Total</th>
-        </tr></thead>
-        <tbody>`;
-
-    PANELES.forEach((p,pi) => {
-      h += `<tr>
-        <td class="${PC[pi]}">${p}</td>
-        <td>${inp(`${dk}_p${pi}_m`)}</td>
-        <td>${inp(`${dk}_p${pi}_t`)}</td>
-        <td>${inp(`${dk}_p${pi}_n`)}</td>
-        <td style="background:#f1f8f1">${inp(`${dk}_p${pi}_sue`)}</td>
-        <td style="background:#e8f4fd">${inp(`${dk}_p${pi}_bon`)}</td>
-        <td class="calc" id="${dk}_p${pi}_tot"></td>
-      </tr>`;
-    });
-
-    h += `<tr class="rojo">
-        <td>Total Dia</td>
-        <td class="calc-r" id="${dk}_totM"></td>
-        <td class="calc-r" id="${dk}_totT"></td>
-        <td class="calc-r" id="${dk}_totN"></td>
-        <td class="calc-r" id="${dk}_totSue"></td>
-        <td class="calc-r" id="${dk}_totBon"></td>
-        <td class="calc-r" id="${dk}_totDia"></td>
-      </tr></tbody></table>
-
-      <!-- Sección inferior diseño B -->
-      <div style="padding:10px 12px">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <!-- Columna izquierda: métricas -->
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <div style="background:#f0f4ff;border:0.5px solid #c5d8f7;border-radius:8px;padding:10px 12px">
-              <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#666;margin-bottom:3px">Total día</div>
-              <div style="font-size:18px;font-weight:600;font-family:monospace;color:#185FA5" id="${dk}_total_card">—</div>
-            </div>
-            <div style="background:#fff5f5;border:0.5px solid #f7c1c1;border-radius:8px;padding:10px 12px">
-              <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#666;margin-bottom:3px">Sub Total</div>
-              <div style="font-size:18px;font-weight:600;font-family:monospace;color:#A32D2D" id="${dk}_sub_card">—</div>
-            </div>
-            <div style="background:#fff0f0;border:0.5px solid #f7c1c1;border-radius:8px;padding:8px 12px;margin-top:auto;display:flex;justify-content:space-between;align-items:center">
-              <span style="font-size:13px;font-weight:600;color:#A32D2D">Sub Total</span>
-              <span style="font-size:17px;font-weight:700;font-family:monospace;color:#A32D2D" id="${dk}_sub">—</span>
-            </div>
-          </div>
-          <!-- Columna derecha: campos -->
-          <div style="background:#fafafa;border:0.5px solid #e8e8e8;border-radius:8px;overflow:hidden">
-            ${[
-              ['Ret. Lezcano',   `${dk}_retL`, true],
-              ['Ret. Martin',    `${dk}_retM`, true],
-              ['Pagos Fichas',   `${dk}_pagF`, false],
-              ['Banco',          `${dk}_banco`, false],
-              ['Gasto',          `${dk}_gasto`, true],
-              ['Sueldos Jaz',    `${dk}_sue_Jaz`, false],
-              ['Sueldos Emi',    `${dk}_sue_Emi`, false],
-              ['Sue. Gustavo',   `${dk}_sue_Gustavo`, false],
-              ['Compra Us$',     `${dk}_usd`, true],
-            ].map(([lbl, key, hasObs]) => `
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 10px;border-bottom:0.5px solid #ebebeb">
-                <span style="font-size:12px;color:#555">${lbl}</span>
-                <div style="display:flex;align-items:center;gap:4px">
-                  <input class="c" id="${key}" value="${g(key)||''}"
-                    oninput="onInp(this)" onchange="onInp(this)"
-                    style="width:100px;text-align:right;font-family:monospace;font-size:12px;background:white;border:0.5px solid #ddd;border-radius:4px;padding:2px 6px">
-                  ${hasObs?`<button class="obs-btn" data-key="${key}_obs" data-titulo="${lbl}" onclick="obsClick(this)" style="color:#999;font-size:12px">📝</button>`:'<span style="width:20px"></span>'}
-                </div>
-              </div>`).join('')}
-          </div>
+  <!-- Sección inferior diseño B -->
+  <div style="padding:10px 12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="background:#f0f4ff;border:0.5px solid #c5d8f7;border-radius:8px;padding:10px 12px">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#666;margin-bottom:3px">Total día</div>
+          <div style="font-size:18px;font-weight:600;font-family:monospace;color:#185FA5" id="${dk}_total_card">—</div>
+        </div>
+        <div style="background:#fff5f5;border:0.5px solid #f7c1c1;border-radius:8px;padding:10px 12px">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#666;margin-bottom:3px">Sub Total</div>
+          <div style="font-size:18px;font-weight:600;font-family:monospace;color:#A32D2D" id="${dk}_sub_card">—</div>
+        </div>
+        <div style="background:#fff0f0;border:0.5px solid #f7c1c1;border-radius:8px;padding:8px 12px;margin-top:auto;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;font-weight:600;color:#A32D2D">Sub Total</span>
+          <span style="font-size:17px;font-weight:700;font-family:monospace;color:#A32D2D" id="${dk}_sub">—</span>
         </div>
       </div>
-    </div>`;
-  });
-
-  if (fechasFiltradas.length === 0) {
-    h += `<div style="text-align:center;padding:40px;color:#888">No hay días en el rango seleccionado</div>`;
-  }
+      <div style="background:#fafafa;border:0.5px solid #e8e8e8;border-radius:8px;overflow:hidden">
+        ${[
+          ['Ret. Lezcano',   `${dk}_retL`, true],
+          ['Ret. Martin',    `${dk}_retM`, true],
+          ['Pagos Fichas',   `${dk}_pagF`, false],
+          ['Banco',          `${dk}_banco`, false],
+          ['Gasto',          `${dk}_gasto`, true],
+          ['Sueldos Jaz',    `${dk}_sue_Jaz`, false],
+          ['Sueldos Emi',    `${dk}_sue_Emi`, false],
+          ['Sue. Gustavo',   `${dk}_sue_Gustavo`, false],
+          ['Compra Us$',     `${dk}_usd`, true],
+        ].map(([lbl, key, hasObs]) => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 10px;border-bottom:0.5px solid #ebebeb">
+            <span style="font-size:12px;color:#555">${lbl}</span>
+            <div style="display:flex;align-items:center;gap:4px">
+              <input class="c" id="${key}" value="${g(key)||''}"
+                oninput="onInp(this)" onchange="onInp(this)"
+                style="width:100px;text-align:right;font-family:monospace;font-size:12px;background:white;border:0.5px solid #ddd;border-radius:4px;padding:2px 6px">
+              ${hasObs?`<button class="obs-btn" data-key="${key}_obs" data-titulo="${lbl}" onclick="obsClick(this)" style="color:#999;font-size:12px">📝</button>`:'<span style="width:20px"></span>'}
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
 
   el.innerHTML = h;
-
-  // Recalcular todos los días
-  fechasFiltradas.forEach(dt => {
-    const dia = dt.getDate();
-    const dk = `mes_${y}${pad(m+1)}${pad(dia)}`;
-    recalcDiaMes(dk);
-  });
+  recalcDiaMes(dk);
 }
 
-function aplicarFiltro() {
-  const desde = document.getElementById('filtroDesde')?.value;
-  const hasta = document.getElementById('filtroHasta')?.value;
-  renderMensual(desde, hasta);
+function navegarDia(delta) {
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const [mesNom, anio] = MES.split(' ');
+  const m = meses.indexOf(mesNom);
+  const y = parseInt(anio);
+  const diasEnMes = new Date(y, m+1, 0).getDate();
+  DIA_ACTUAL = Math.max(1, Math.min(diasEnMes, DIA_ACTUAL + delta));
+  renderMensual(DIA_ACTUAL);
 }
+
+function navegarDiaInput(el) {
+  const val = parseInt(el.value);
+  if (!isNaN(val)) renderMensual(val);
+}
+
+
+
 
 function recalcDiaMes(dk) {
   let totM=0, totT=0, totN=0, totSue=0, totBon=0;
@@ -1683,7 +1676,8 @@ function recalcDiaMes(dk) {
 function renderAll() {
   const mes = document.getElementById('mesSelect').value;
   MES = mes;
-  renderMensual('', '');
+  DIA_ACTUAL = 1;
+  renderMensual(1);
   renderCargas();
   renderDirecciones();
   renderFrancos();
