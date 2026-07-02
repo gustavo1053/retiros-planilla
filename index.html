@@ -1549,49 +1549,54 @@ function renderMensual(desde, hasta) {
         <td class="calc-r" id="${dk}_totDia"></td>
       </tr></tbody></table>
 
-      <!-- Sección inferior diseño A -->
-      <div style="padding:8px 10px">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
-          <div style="background:#f9f9f9;border:1px solid #ddd;border-radius:6px;padding:8px 12px">
-            <div style="font-size:9px;text-transform:uppercase;color:#888;margin-bottom:3px">Total día</div>
-            <div style="font-size:15px;font-weight:700;color:#0070C0" id="${dk}_total_card">—</div>
+      <!-- Sección inferior diseño A mejorado -->
+      <div style="padding:10px 12px">
+        <!-- 4 métricas en fila -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
+          <div style="background:var(--surface-2,#f0f4ff);border:0.5px solid #c5d8f7;border-radius:8px;padding:8px 10px">
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:#666;margin-bottom:2px">Total día</div>
+            <div style="font-size:14px;font-weight:600;font-family:monospace;color:#185FA5" id="${dk}_total_card">—</div>
           </div>
-          <div style="background:#f9f9f9;border:1px solid #ddd;border-radius:6px;padding:8px 12px">
-            <div style="font-size:9px;text-transform:uppercase;color:#888;margin-bottom:3px">Sub Total</div>
-            <div style="font-size:15px;font-weight:700;color:#C00000" id="${dk}_sub_card">—</div>
+          <div style="background:#fff5f5;border:0.5px solid #f7c1c1;border-radius:8px;padding:8px 10px">
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:#666;margin-bottom:2px">Sub Total</div>
+            <div style="font-size:14px;font-weight:600;font-family:monospace;color:#A32D2D" id="${dk}_sub_card">—</div>
           </div>
-          <div style="background:#f9f9f9;border:1px solid #ddd;border-radius:6px;padding:8px 12px">
-            <div style="font-size:9px;text-transform:uppercase;color:#888;margin-bottom:3px">Retiro Lezcano</div>
-            <div style="font-size:15px;font-weight:700;color:#c55a11" id="${dk}_retL_card">—</div>
+          <div style="background:#fff8ee;border:0.5px solid #FAC775;border-radius:8px;padding:8px 10px">
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:#666;margin-bottom:2px">Ret. Lezcano</div>
+            <div style="font-size:14px;font-weight:600;font-family:monospace;color:#854F0B" id="${dk}_retL_card">—</div>
           </div>
-          <div style="background:#f9f9f9;border:1px solid #ddd;border-radius:6px;padding:8px 12px">
-            <div style="font-size:9px;text-transform:uppercase;color:#888;margin-bottom:3px">Retiro Martin</div>
-            <div style="font-size:15px;font-weight:700;color:#c55a11" id="${dk}_retM_card">—</div>
+          <div style="background:#fff8ee;border:0.5px solid #FAC775;border-radius:8px;padding:8px 10px">
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:#666;margin-bottom:2px">Ret. Martin</div>
+            <div style="font-size:14px;font-weight:600;font-family:monospace;color:#854F0B" id="${dk}_retM_card">—</div>
           </div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:3px">
+        <!-- Lista de campos -->
+        <div style="background:#fafafa;border:0.5px solid #e8e8e8;border-radius:8px;overflow:hidden">
           ${[
-            ['Lezcano Retiro', `${dk}_retL`, true, ''],
-            ['Martin Retiro',  `${dk}_retM`, true, ''],
-            ['Pagos Fichas',   `${dk}_pagF`, false, ''],
-            ['Banco',          `${dk}_banco`, false, ''],
-            ['Gasto',          `${dk}_gasto`, true, ''],
-            ['Sueldos Jaz',    `${dk}_sue_Jaz`, false, ''],
-            ['Sueldos Emi',    `${dk}_sue_Emi`, false, ''],
-            ['Sueldos Gustavo',`${dk}_sue_Gustavo`, false, ''],
-            ['Compra Us$',     `${dk}_usd`, true, ''],
+            ['Lezcano Retiro', `${dk}_retL`, true],
+            ['Martin Retiro',  `${dk}_retM`, true],
+            ['Pagos Fichas',   `${dk}_pagF`, false],
+            ['Banco',          `${dk}_banco`, false],
+            ['Gasto',          `${dk}_gasto`, true],
+            ['Sueldos Jaz',    `${dk}_sue_Jaz`, false],
+            ['Sueldos Emi',    `${dk}_sue_Emi`, false],
+            ['Sueldos Gustavo',`${dk}_sue_Gustavo`, false],
+            ['Compra Us$',     `${dk}_usd`, true],
           ].map(([lbl, key, hasObs]) => `
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #f0f0f0">
-              <span style="font-size:11px;color:#555">${lbl}</span>
-              <div style="display:flex;align-items:center;gap:4px">
-                ${inp(key)}
-                ${hasObs?`<button class="obs-btn" data-key="${key}_obs" data-titulo="${lbl}" onclick="obsClick(this)">📝</button>`:''}
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 10px;border-bottom:0.5px solid #ebebeb">
+              <span style="font-size:12px;color:#555;min-width:120px">${lbl}</span>
+              <div style="display:flex;align-items:center;gap:5px">
+                <input class="c" id="${key}" value="${g(key)||''}"
+                  oninput="onInp(this)" onchange="onInp(this)"
+                  style="width:110px;text-align:right;font-family:monospace;font-size:12px;background:white;border:0.5px solid #ddd;border-radius:4px;padding:2px 6px">
+                ${hasObs?`<button class="obs-btn" data-key="${key}_obs" data-titulo="${lbl}" onclick="obsClick(this)" style="color:#999;font-size:12px">📝</button>`:'<span style="width:20px"></span>'}
               </div>
             </div>`).join('')}
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 6px;background:#C00000;border-radius:4px;margin-top:4px">
-            <span style="font-size:12px;font-weight:700;color:#000">Sub Total</span>
-            <span style="font-size:15px;font-weight:700;color:#000;font-family:monospace" id="${dk}_sub">—</span>
-          </div>
+        </div>
+        <!-- Sub Total destacado -->
+        <div style="background:#fff0f0;border:0.5px solid #f7c1c1;border-radius:8px;padding:8px 12px;margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;font-weight:600;color:#A32D2D">Sub Total</span>
+          <span style="font-size:16px;font-weight:700;font-family:monospace;color:#A32D2D" id="${dk}_sub">—</span>
         </div>
       </div>
     </div>`;
