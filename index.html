@@ -1498,12 +1498,24 @@ function renderMensual(diaNum) {
       ${diaNom} ${pad(dia)}/${pad(m+1)}/${y}
       ${esFer?`<span style="font-size:11px;background:#C00000;color:#fff;padding:2px 8px;border-radius:10px;margin-left:6px">🗓 ${ferNom}</span>`:''}
     </div>
-    <!-- Resumen mensual compacto -->
-    <div style="margin-left:auto;display:flex;gap:12px;font-size:11px;flex-wrap:wrap">
-      <span style="color:#888">Mes: <b style="color:#1f3864">$${fmt(totGeneralMes)}</b></span>
-      <span style="color:#888">Ret.M: <b style="color:#C00000">$${fmt(totRetMMes)}</b></span>
-      <span style="color:#888">Ret.L: <b style="color:#C00000">$${fmt(totRetLMes)}</b></span>
-      <span style="color:#888">Gastos: <b style="color:#c55a11">$${fmt(totGastoMes)}</b></span>
+    <!-- Resumen mensual -->
+    <div style="margin-left:auto;display:flex;gap:20px;flex-wrap:wrap;align-items:center">
+      <div style="display:flex;flex-direction:column;align-items:flex-end">
+        <span style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em">Total Mes</span>
+        <span style="font-size:16px;font-weight:700;color:#1f3864;font-family:monospace">$${fmt(totGeneralMes)}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end">
+        <span style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em">Ret. Martin</span>
+        <span style="font-size:16px;font-weight:700;color:#C00000;font-family:monospace">$${fmt(totRetMMes)}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end">
+        <span style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em">Ret. Lezcano</span>
+        <span style="font-size:16px;font-weight:700;color:#C00000;font-family:monospace">$${fmt(totRetLMes)}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end">
+        <span style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em">Total Gastos</span>
+        <span style="font-size:16px;font-weight:700;color:#c55a11;font-family:monospace">$${fmt(totGastoMes)}</span>
+      </div>
     </div>
   </div>
 
