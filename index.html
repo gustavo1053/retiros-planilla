@@ -154,6 +154,23 @@ input.c.wh{color:#fff}
 .obs-cancel:hover{background:#888}
 .obs-preview{font-size:10px;color:#555;font-style:italic;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle}
 .autosave{position:fixed;bottom:8px;right:12px;background:#333;color:#fff;font-size:10px;padding:3px 8px;border-radius:3px;display:none;z-index:300}
+/* Vista mensual */
+.mes-filtro{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0;margin-bottom:10px;border-bottom:2px solid #ddd}
+.mes-filtro label{font-size:11px;font-weight:700;color:#555}
+.mes-filtro input[type=date]{font-size:11px;padding:4px 8px;border:1px solid #bbb;border-radius:4px;font-family:Calibri,Arial,sans-serif}
+.mes-filtro select{font-size:11px;padding:4px 8px;border:1px solid #bbb;border-radius:4px}
+.btn-filtrar{background:#1f3864;color:#fff;border:none;padding:5px 14px;font-size:11px;font-weight:700;border-radius:4px;cursor:pointer}
+.btn-filtrar:hover{background:#2e4a7a}
+.btn-reset{background:#888;color:#fff;border:none;padding:5px 10px;font-size:11px;border-radius:4px;cursor:pointer}
+.dia-blk{margin-bottom:12px;border:1px solid #ccc;border-radius:6px;overflow:hidden}
+.dia-blk-hdr{background:#1f3864;color:#fff;padding:5px 10px;font-weight:700;font-size:12px;display:flex;align-items:center;gap:10px}
+.dia-feriado .dia-blk-hdr{background:#C00000}
+.feriado-badge{font-size:10px;background:rgba(255,255,255,0.25);padding:1px 6px;border-radius:10px}
+.mes-resumen{background:#f8f8f8;border:1px solid #ddd;border-radius:6px;padding:10px 14px;margin-bottom:12px;display:flex;gap:20px;flex-wrap:wrap;font-size:12px}
+.mes-res-item{display:flex;flex-direction:column}
+.mes-res-lbl{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em}
+.mes-res-val{font-size:15px;font-weight:700;color:#1f3864}
+.mes-res-val.rojo{color:#C00000}
 .res-flo{position:fixed;top:78px;right:14px;background:#fff;border:1px solid #ddd;border-radius:8px;padding:16px 24px;z-index:150;box-shadow:0 2px 10px rgba(0,0,0,.1);min-width:360px;max-width:520px;display:none;font-family:Calibri,Arial,sans-serif;font-size:12px}
 .res-flo.visible{display:block}
 .res-flo-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#999;margin-bottom:10px}
@@ -216,29 +233,15 @@ input.premio-monto{width:100px;font-size:12px;padding:3px 6px;border:1px solid #
 </div>
 
 <div class="sheet-tabs">
-  <div class="stab active" onclick="showSheet('sh_s1',this)">Semana 1</div>
-  <div class="stab" onclick="showSheet('sh_s2',this)">Semana 2</div>
-  <div class="stab" onclick="showSheet('sh_s3',this)">Semana 3</div>
-  <div class="stab" onclick="showSheet('sh_s4',this)">Semana 4</div>
+  <div class="stab active" onclick="showSheet('sh_mes',this)">📅 Mensual</div>
   <div class="stab" onclick="showSheet('sh_carga',this)">Carga Fi</div>
-  <div class="stab" onclick="showSheet('sh_su1',this)">Sueldos 1</div>
-  <div class="stab" onclick="showSheet('sh_su2',this)">Sueldos 2</div>
-  <div class="stab" onclick="showSheet('sh_su3',this)">Sueldos 3</div>
-  <div class="stab" onclick="showSheet('sh_su4',this)">Sueldos 4</div>
   <div class="stab" onclick="showSheet('sh_dir',this)">Direcciones</div>
   <div class="stab" onclick="showSheet('sh_fra',this)">Francos</div>
   <div class="stab" onclick="showSheet('sh_prod',this)">🏆 Productividad</div>
 </div>
 
-<div id="sh_s1"    class="sheet active"></div>
-<div id="sh_s2"    class="sheet"></div>
-<div id="sh_s3"    class="sheet"></div>
-<div id="sh_s4"    class="sheet"></div>
+<div id="sh_mes"   class="sheet active"></div>
 <div id="sh_carga" class="sheet"></div>
-<div id="sh_su1"   class="sheet"></div>
-<div id="sh_su2"   class="sheet"></div>
-<div id="sh_su3"   class="sheet"></div>
-<div id="sh_su4"   class="sheet"></div>
 <div id="sh_dir"   class="sheet"></div>
 <div id="sh_fra"   class="sheet"></div>
 <div id="sh_prod"  class="sheet"></div>
@@ -318,10 +321,6 @@ function actualizarFlotante(shId) {
 
 async function cambiarMes() {
   MES = document.getElementById('mesSelect').value;
-  // Resetear offsets de semana y sueldos al cambiar mes
-  ['sh_s1','sh_s2','sh_s3','sh_s4','sh_su1','sh_su2','sh_su3','sh_su4'].forEach(id => {
-    s(id+'_offset', '0');
-  });
   await cargarDesdeFirebase();
   renderAll();
 }
@@ -337,9 +336,9 @@ function onInp(el) {
   s(el.id, el.value);
   const id = el.id;
 
-  // Semana día: sh_s1_d2_p3_m  → recalc ese día
-  const mDia = id.match(/^(sh_s\d)_d(\d+)_(p\d+_[mtn]|retL|retM|pagF|banco|gasto|usd)$/);
-  if (mDia) { recalcDia(mDia[1], parseInt(mDia[2])); recalcSemRes(mDia[1]); }
+  // Sistema mensual: mes_202406DD_* → recalc ese día
+  const mMes = id.match(/^(mes_\d{8})_/);
+  if (mMes) { recalcDiaMes(mMes[1]); }
 
   // Sueldo: sh_su1_... → recalc ese sueldo
   const mSu = id.match(/^(sh_su\d)_/);
@@ -1444,25 +1443,256 @@ function renderProductividad() {
   el.innerHTML = h;
 }
 
+// ── RENDER MENSUAL ───────────────────────────────────────────
+function renderMensual(desde, hasta) {
+  const el = document.getElementById('sh_mes');
+  if (!el) return;
+
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const [mesNom, anio] = MES.split(' ');
+  const m = meses.indexOf(mesNom);
+  const y = parseInt(anio);
+  const diasEnMes = new Date(y, m+1, 0).getDate();
+  const pad = n => String(n).padStart(2,'0');
+
+  // Fechas del mes
+  const todasFechas = [];
+  for (let d=1; d<=diasEnMes; d++) {
+    todasFechas.push(new Date(y, m, d));
+  }
+
+  // Filtro
+  const desdeDate = desde ? new Date(desde+'T00:00:00') : new Date(y, m, 1);
+  const hastaDate = hasta ? new Date(hasta+'T00:00:00') : new Date(y, m, diasEnMes);
+  const fechasFiltradas = todasFechas.filter(dt => dt >= desdeDate && dt <= hastaDate);
+
+  const DIAS_NOM = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+
+  let h = `<div class="mes-filtro">
+    <label>Desde:</label>
+    <input type="date" id="filtroDesde" value="${desde||y+'-'+pad(m+1)+'-01'}"
+      min="${y}-${pad(m+1)}-01" max="${y}-${pad(m+1)}-${pad(diasEnMes)}">
+    <label>Hasta:</label>
+    <input type="date" id="filtroHasta" value="${hasta||y+'-'+pad(m+1)+'-'+pad(diasEnMes)}"
+      min="${y}-${pad(m+1)}-01" max="${y}-${pad(m+1)}-${pad(diasEnMes)}">
+    <button class="btn-filtrar" onclick="aplicarFiltro()">🔍 Filtrar</button>
+    <button class="btn-reset" onclick="renderMensual('','')">↺ Ver todo</button>
+    <span style="font-size:11px;color:#888">${fechasFiltradas.length} días</span>
+  </div>`;
+
+  // Resumen del período
+  let totRetL=0, totRetM=0, totGasto=0, totGeneral=0;
+  fechasFiltradas.forEach(dt => {
+    const dk = `mes_${y}${pad(m+1)}${pad(dt.getDate())}`;
+    totRetL   += nv(g(`${dk}_retL`));
+    totRetM   += nv(g(`${dk}_retM`));
+    totGasto  += nv(g(`${dk}_gasto`));
+    PANELES.forEach((_,pi) => {
+      ['m','t','n'].forEach(t => totGeneral += nv(g(`${dk}_p${pi}_${t}`)));
+    });
+  });
+
+  h += `<div class="mes-resumen">
+    <div class="mes-res-item"><span class="mes-res-lbl">Total período</span><span class="mes-res-val">$${fmt(totGeneral)}</span></div>
+    <div class="mes-res-item"><span class="mes-res-lbl">Retiros Martin</span><span class="mes-res-val rojo">$${fmt(totRetM)}</span></div>
+    <div class="mes-res-item"><span class="mes-res-lbl">Retiros Lezcano</span><span class="mes-res-val rojo">$${fmt(totRetL)}</span></div>
+    <div class="mes-res-item"><span class="mes-res-lbl">Total Gastos</span><span class="mes-res-val rojo">$${fmt(totGasto)}</span></div>
+  </div>`;
+
+  // Bloques por día
+  fechasFiltradas.forEach(dt => {
+    const dia = dt.getDate();
+    const dk = `mes_${y}${pad(m+1)}${pad(dia)}`;
+    const diaNom = DIAS_NOM[dt.getDay()];
+    const fechaStr = `${diaNom} ${pad(dia)}/${pad(m+1)}/${y}`;
+    const isoStr = `${y}-${pad(m+1)}-${pad(dia)}`;
+    const esFer = esFeriado(dt);
+    const ferNom = esFer ? nombreFeriado(dt) : '';
+
+    h += `<div class="dia-blk ${esFer?'dia-feriado':''}">
+      <div class="dia-blk-hdr">
+        <span>${fechaStr}</span>
+        ${esFer?`<span class="feriado-badge">🗓 ${ferNom}</span>`:''}
+      </div>
+      <table>
+        <thead><tr>
+          <th style="width:100px">Panel</th>
+          <th style="width:110px">Mañana</th>
+          <th style="width:110px">Tarde</th>
+          <th style="width:110px">Noche</th>
+          <th style="width:100px;background:#e8f5e9">Sueldos</th>
+          <th style="width:100px;background:#e3f2fd">Bonif.</th>
+          <th style="width:100px;background:#ffe0b2">Total</th>
+        </tr></thead>
+        <tbody>`;
+
+    PANELES.forEach((p,pi) => {
+      h += `<tr>
+        <td class="${PC[pi]}">${p}</td>
+        <td>${inp(`${dk}_p${pi}_m`)}</td>
+        <td>${inp(`${dk}_p${pi}_t`)}</td>
+        <td>${inp(`${dk}_p${pi}_n`)}</td>
+        <td style="background:#f1f8f1">${inp(`${dk}_p${pi}_sue`)}</td>
+        <td style="background:#e8f4fd">${inp(`${dk}_p${pi}_bon`)}</td>
+        <td class="calc" id="${dk}_p${pi}_tot"></td>
+      </tr>`;
+    });
+
+    h += `<tr class="rojo">
+        <td>Total Dia</td>
+        <td class="calc-r" id="${dk}_totM"></td>
+        <td class="calc-r" id="${dk}_totT"></td>
+        <td class="calc-r" id="${dk}_totN"></td>
+        <td class="calc-r" id="${dk}_totSue"></td>
+        <td class="calc-r" id="${dk}_totBon"></td>
+        <td class="calc-r" id="${dk}_totDia"></td>
+      </tr></tbody></table>
+
+      <!-- Sección inferior diseño A -->
+      <div style="padding:8px 10px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+          <div style="background:#f9f9f9;border:1px solid #ddd;border-radius:6px;padding:8px 12px">
+            <div style="font-size:9px;text-transform:uppercase;color:#888;margin-bottom:3px">Total día</div>
+            <div style="font-size:15px;font-weight:700;color:#0070C0" id="${dk}_total_card">—</div>
+          </div>
+          <div style="background:#f9f9f9;border:1px solid #ddd;border-radius:6px;padding:8px 12px">
+            <div style="font-size:9px;text-transform:uppercase;color:#888;margin-bottom:3px">Sub Total</div>
+            <div style="font-size:15px;font-weight:700;color:#C00000" id="${dk}_sub_card">—</div>
+          </div>
+          <div style="background:#f9f9f9;border:1px solid #ddd;border-radius:6px;padding:8px 12px">
+            <div style="font-size:9px;text-transform:uppercase;color:#888;margin-bottom:3px">Retiro Lezcano</div>
+            <div style="font-size:15px;font-weight:700;color:#c55a11" id="${dk}_retL_card">—</div>
+          </div>
+          <div style="background:#f9f9f9;border:1px solid #ddd;border-radius:6px;padding:8px 12px">
+            <div style="font-size:9px;text-transform:uppercase;color:#888;margin-bottom:3px">Retiro Martin</div>
+            <div style="font-size:15px;font-weight:700;color:#c55a11" id="${dk}_retM_card">—</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          ${[
+            ['Lezcano Retiro', `${dk}_retL`, true, ''],
+            ['Martin Retiro',  `${dk}_retM`, true, ''],
+            ['Pagos Fichas',   `${dk}_pagF`, false, ''],
+            ['Banco',          `${dk}_banco`, false, ''],
+            ['Gasto',          `${dk}_gasto`, true, ''],
+            ['Sueldos Jaz',    `${dk}_sue_Jaz`, false, ''],
+            ['Sueldos Emi',    `${dk}_sue_Emi`, false, ''],
+            ['Sueldos Gustavo',`${dk}_sue_Gustavo`, false, ''],
+            ['Compra Us$',     `${dk}_usd`, true, ''],
+          ].map(([lbl, key, hasObs]) => `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;border-bottom:1px solid #f0f0f0">
+              <span style="font-size:11px;color:#555">${lbl}</span>
+              <div style="display:flex;align-items:center;gap:4px">
+                ${inp(key)}
+                ${hasObs?`<button class="obs-btn" data-key="${key}_obs" data-titulo="${lbl}" onclick="obsClick(this)">📝</button>`:''}
+              </div>
+            </div>`).join('')}
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 6px;background:#C00000;border-radius:4px;margin-top:4px">
+            <span style="font-size:12px;font-weight:700;color:#000">Sub Total</span>
+            <span style="font-size:15px;font-weight:700;color:#000;font-family:monospace" id="${dk}_sub">—</span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  if (fechasFiltradas.length === 0) {
+    h += `<div style="text-align:center;padding:40px;color:#888">No hay días en el rango seleccionado</div>`;
+  }
+
+  el.innerHTML = h;
+
+  // Recalcular todos los días
+  fechasFiltradas.forEach(dt => {
+    const dia = dt.getDate();
+    const dk = `mes_${y}${pad(m+1)}${pad(dia)}`;
+    recalcDiaMes(dk);
+  });
+}
+
+function aplicarFiltro() {
+  const desde = document.getElementById('filtroDesde')?.value;
+  const hasta = document.getElementById('filtroHasta')?.value;
+  renderMensual(desde, hasta);
+}
+
+function recalcDiaMes(dk) {
+  let totM=0, totT=0, totN=0, totSue=0, totBon=0;
+  PANELES.forEach((p,pi) => {
+    const pm = nv(g(`${dk}_p${pi}_m`));
+    const pt = nv(g(`${dk}_p${pi}_t`));
+    const pn = nv(g(`${dk}_p${pi}_n`));
+    totM += pm; totT += pt; totN += pn;
+    totSue += nv(g(`${dk}_p${pi}_sue`));
+    totBon += nv(g(`${dk}_p${pi}_bon`));
+    sc(`${dk}_p${pi}_tot`, pm+pt+pn);
+  });
+  const banco  = nv(g(`${dk}_banco`));
+  const retL   = nv(g(`${dk}_retL`));
+  const retM   = nv(g(`${dk}_retM`));
+  const pagF   = nv(g(`${dk}_pagF`));
+  const gasto  = nv(g(`${dk}_gasto`));
+  const usd    = nv(g(`${dk}_usd`));
+  const sueJaz = nv(g(`${dk}_sue_Jaz`));
+  const sueEmi = nv(g(`${dk}_sue_Emi`));
+  const sueGus = nv(g(`${dk}_sue_Gustavo`));
+  const total  = totM + totT + totN + banco;
+  const sub    = total - retL - retM - pagF - gasto - usd - sueJaz - sueEmi - sueGus;
+
+  sc(`${dk}_totM`,   totM);
+  sc(`${dk}_totT`,   totT);
+  sc(`${dk}_totN`,   totN);
+  sc(`${dk}_totSue`, totSue);
+  sc(`${dk}_totBon`, totBon);
+  sc(`${dk}_totDia`, totM+totT+totN);
+
+  const tCard = document.getElementById(`${dk}_total_card`);
+  const sCard = document.getElementById(`${dk}_sub_card`);
+  const rLCard = document.getElementById(`${dk}_retL_card`);
+  const rMCard = document.getElementById(`${dk}_retM_card`);
+  const subEl  = document.getElementById(`${dk}_sub`);
+  if(tCard)  tCard.textContent  = total ? '$'+fmt(total) : '—';
+  if(sCard)  sCard.textContent  = sub   ? '$'+fmt(sub)   : '—';
+  if(rLCard) rLCard.textContent = retL  ? '$'+fmt(retL)  : '—';
+  if(rMCard) rMCard.textContent = retM  ? '$'+fmt(retM)  : '—';
+  if(subEl)  subEl.textContent  = sub   ? '$'+fmt(sub)   : '—';
+
+  // Propagar sub total al banco del día siguiente
+  if (sub > 0) {
+    const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const [mesNom, anio] = MES.split(' ');
+    const m = meses.indexOf(mesNom); const y = parseInt(anio);
+    const diaActual = parseInt(dk.slice(-2));
+    const diasEnMes = new Date(y, m+1, 0).getDate();
+    if (diaActual < diasEnMes) {
+      const pad = n => String(n).padStart(2,'0');
+      const dkNext = `mes_${y}${pad(m+1)}${pad(diaActual+1)}`;
+      const autoKey = `${dkNext}_banco_auto`;
+      if (!g(autoKey) || g(autoKey) === '1') {
+        s(`${dkNext}_banco`, Math.round(sub).toString());
+        s(autoKey, '1');
+        const bancoEl = document.getElementById(`${dkNext}_banco`);
+        if (bancoEl) { bancoEl.value = Math.round(sub).toLocaleString('es-AR'); bancoEl.style.background='#e8f0fe'; }
+        recalcDiaMes(dkNext);
+      }
+    }
+  }
+}
+
 // ── RENDER ALL ───────────────────────────────────────────────
 function renderAll() {
   const mes = document.getElementById('mesSelect').value;
   MES = mes;
-  renderSemana('sh_s1', `${mes} — Semana 1`);
-  renderSemana('sh_s2', `${mes} — Semana 2`);
-  renderSemana('sh_s3', `${mes} — Semana 3`);
-  renderSemana('sh_s4', `${mes} — Semana 4`);
+  renderMensual('', '');
   renderCargas();
-  renderSueldo('sh_su1', `Sueldos Semana 1 — ${mes}`);
-  renderSueldo('sh_su2', `Sueldos Semana 2 — ${mes}`);
-  renderSueldo('sh_su3', `Sueldos Semana 3 — ${mes}`);
-  renderSueldo('sh_su4', `Sueldos Semana 4 — ${mes}`);
   renderDirecciones();
   renderFrancos();
   renderProductividad();
-  // Mostrar flotante por defecto en Semana 1
+  // Ocultar flotante (ya no aplica por semanas)
   const flo = document.getElementById('resFlotante');
-  if (flo) { flo.classList.add('visible'); actualizarFlotante('sh_s1'); }
+  if (flo) flo.classList.remove('visible');
 }
 
 // ── INIT ─────────────────────────────────────────────────────
@@ -1477,15 +1707,17 @@ document.addEventListener('DOMContentLoaded', async function() {
       'Age 23':'AG 23','Age 24':'AG 24','Age 25':'AG 25','Sm':'SIEMPRE MONO'
     };
     const cache = window._sueldosCache || {};
-    const shId = document.querySelector('.sheet.active')?.id;
-    if (!shId || !shId.match(/^sh_s[1-4]$/)) return;
-    const semIdx = ['sh_s1','sh_s2','sh_s3','sh_s4'].indexOf(shId);
-    const offset = parseInt(g(shId+'_offset')) || 0;
-    const lunes  = luneSemana(MES, semIdx + offset);
-    for (let d=0; d<7; d++) {
-      const dt = new Date(lunes); dt.setDate(lunes.getDate()+d);
-      const fecha = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
-      const dk = `${shId}_d${d}`;
+    const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const [mesNom, anio] = MES.split(' ');
+    const m = meses.indexOf(mesNom);
+    const y = parseInt(anio);
+    const diasEnMes = new Date(y, m+1, 0).getDate();
+    const pad = n => String(n).padStart(2,'0');
+    for (let dia=1; dia<=diasEnMes; dia++) {
+      const dt = new Date(y, m, dia);
+      const fecha = `${y}-${pad(m+1)}-${pad(dia)}`;
+      const dk = `mes_${y}${pad(m+1)}${pad(dia)}`;
       PANELES.forEach((panel, pi) => {
         const agKey = PANEL_TO_AG[panel];
         const diaData = cache[agKey]?.[fecha];
@@ -1512,10 +1744,9 @@ document.addEventListener('DOMContentLoaded', async function() {
           const elB = document.getElementById(`${dk}_p${pi}_bon`);
           if (elB) { elB.value = Math.round(bonTotal).toLocaleString('es-AR'); elB.style.background='#e3f2fd'; }
         }
-        recalcDia(shId, d);
+        recalcDiaMes(dk);
       });
     }
-    recalcSemRes(shId);
   });
 
   await cargarStorage();
