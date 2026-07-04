@@ -321,8 +321,13 @@ function actualizarFlotante(shId) {
 
 async function cambiarMes() {
   MES = document.getElementById('mesSelect').value;
+  window._MES = MES;
   await cargarDesdeFirebase();
   renderAll();
+  // Recargar sueldos/bonif para el nuevo mes
+  if (window._cargarYCompletarSueldos) {
+    await window._cargarYCompletarSueldos('sh_mes', MES);
+  }
 }
 
 // ── INPUT HELPER ─────────────────────────────────────────────
@@ -1688,6 +1693,7 @@ function recalcDiaMes(dk) {
 function renderAll() {
   const mes = document.getElementById('mesSelect').value;
   MES = mes;
+  window._MES = mes;
   DIA_ACTUAL = 1;
   renderMensual(1);
   renderCargas();
