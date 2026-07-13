@@ -1770,8 +1770,7 @@ function renderSueldos(diaNum) {
       totalBon += parseFloat(diaData[t.key]?.bonos || 0);
     });
 
-    const novKey = `sue_nov_${y}${pad(m+1)}${pad(dia)}_p${pi}`;
-    const novVal = g(novKey) || '';
+
 
     h += `<div class="sue-panel">
       <div style="background:${col==='p18'?'#FFFF00':col==='p19'?'#FFC000':col==='p21'?'#FF0000':col==='p22'?'#00B050':col==='p23'?'#0070C0':col==='p24'?'#7030A0':col==='p25'?'#00B0F0':'#e0e0e0'};color:${['p21','p22','p23','p24'].includes(col)?'#fff':'#000'};padding:8px 12px;display:flex;align-items:center;justify-content:space-between">
@@ -1785,22 +1784,27 @@ function renderSueldos(diaNum) {
     TURNOS.forEach(t => {
       const sue = parseFloat(diaData[t.key]?.sueldo || 0);
       const operador = PERSONAL[pi]?.find(p => p.t === t.cls)?.n || '—';
-      h += `<div style="display:grid;grid-template-columns:70px 1fr 120px;border-top:1px solid #e8e8e8;min-height:44px">
-        <div class="sue-turno-lbl ${t.cls}" style="flex-direction:column;gap:1px;align-items:flex-start;padding:6px 10px">
-          <span style="font-size:12px;font-weight:700">${t.lbl}</span>
+      const novTurnoKey = `sue_nov_${y}${pad(m+1)}${pad(dia)}_p${pi}_${t.key}`;
+      const novTurnoVal = g(novTurnoKey) || '';
+      h += `<div style="border-top:1px solid #e8e8e8">
+        <div style="display:grid;grid-template-columns:70px 1fr 120px;min-height:40px">
+          <div class="sue-turno-lbl ${t.cls}" style="flex-direction:column;align-items:flex-start;padding:6px 10px">
+            <span style="font-size:12px;font-weight:700">${t.lbl}</span>
+          </div>
+          <div style="padding:6px 10px;display:flex;align-items:center;border-right:1px solid #e8e8e8">
+            <span style="font-size:13px;font-weight:600;color:#333">${operador}</span>
+          </div>
+          <div style="padding:6px 10px;display:flex;align-items:center;justify-content:flex-end">
+            <span style="font-size:13px;font-weight:700;font-family:monospace;color:${sue>0?'#1f3864':'#ccc'}">${sue>0?'$'+fmt(sue):'—'}</span>
+          </div>
         </div>
-        <div style="padding:6px 10px;display:flex;align-items:center;border-right:1px solid #e8e8e8">
-          <span style="font-size:13px;font-weight:600;color:#333">${operador}</span>
-        </div>
-        <div style="padding:6px 10px;display:flex;align-items:center;justify-content:flex-end">
-          <span style="font-size:13px;font-weight:700;font-family:monospace;color:${sue>0?'#1f3864':'#ccc'}">${sue>0?'$'+fmt(sue):'—'}</span>
-        </div>
+        <textarea class="sue-novedad" id="${novTurnoKey}" placeholder="📝 Novedades ${t.lbl}..."
+          oninput="onInp(this)" onchange="onInp(this)"
+          style="border-left:3px solid ${t.cls==='M'?'#0070C0':t.cls==='T'?'#2e7d32':'#6a1b9a'}">${novTurnoVal}</textarea>
       </div>`;
     });
 
-    h += `<textarea class="sue-novedad" id="${novKey}" placeholder="📝 Novedades del agente..."
-        oninput="onInp(this)" onchange="onInp(this)">${novVal}</textarea>
-    </div>`;
+    h += `</div>`;
   });
 
   h += `</div>`;
