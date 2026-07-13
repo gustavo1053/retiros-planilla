@@ -296,10 +296,15 @@ function showSheet(id, el) {
   document.getElementById(id).classList.add('active');
   el.classList.add('active');
   const flo = document.getElementById('resFlotante');
-  if (!flo) return;
-  const semMatch = id.match(/^sh_s[1-4]$/);
-  if (semMatch) { flo.classList.add('visible'); actualizarFlotante(id); }
-  else { flo.classList.remove('visible'); }
+  if (flo) flo.classList.remove('visible');
+  // Al entrar a Sueldos, re-renderizar con datos actualizados
+  if (id === 'sh_sue') {
+    if (window._sueldosCache && Object.keys(window._sueldosCache).length > 0) {
+      renderSueldos(DIA_SUE);
+    } else if (window._cargarYCompletarSueldos) {
+      window._cargarYCompletarSueldos('sh_sue', MES).then(() => renderSueldos(DIA_SUE));
+    }
+  }
 }
 
 function actualizarFlotante(shId) {
