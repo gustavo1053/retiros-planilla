@@ -1781,24 +1781,15 @@ function renderSueldos(diaNum) {
 
     TURNOS.forEach(t => {
       const sue = parseFloat(diaData[t.key]?.sueldo || 0);
-      const bon = parseFloat(diaData[t.key]?.bonos  || 0);
       const operador = PERSONAL[pi]?.find(p => p.t === t.cls)?.n || '—';
       h += `<div class="sue-turno">
         <div class="sue-turno-lbl ${t.cls}">${t.lbl}<br><span style="font-weight:400;font-size:10px">${operador}</span></div>
-        <div class="sue-val" style="flex-direction:column;align-items:flex-end">
+        <div class="sue-val" style="flex-direction:column;align-items:flex-end;grid-column:span 2">
           <span style="font-size:10px;color:#888">Sueldo</span>
           <span>${sue>0?'$'+fmt(sue):'—'}</span>
         </div>
-        <div class="sue-val" style="flex-direction:column;align-items:flex-end">
-          <span style="font-size:10px;color:#888">Bonif.</span>
-          <span style="color:${bon>0?'#2e7d32':'#ccc'}">${bon>0?'$'+fmt(bon):'—'}</span>
-        </div>
       </div>`;
     });
-
-    if (totalBon > 0) {
-      h += `<div class="sue-total">Total Bonif.: $${fmt(totalBon)}</div>`;
-    }
 
     h += `<textarea class="sue-novedad" id="${novKey}" placeholder="📝 Novedades del agente..."
         oninput="onInp(this)" onchange="onInp(this)">${novVal}</textarea>
