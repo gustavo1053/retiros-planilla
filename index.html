@@ -1785,11 +1785,15 @@ function renderSueldos(diaNum) {
     TURNOS.forEach(t => {
       const sue = parseFloat(diaData[t.key]?.sueldo || 0);
       const operador = PERSONAL[pi]?.find(p => p.t === t.cls)?.n || '—';
-      h += `<div class="sue-turno">
-        <div class="sue-turno-lbl ${t.cls}">${t.lbl}<br><span style="font-weight:400;font-size:10px">${operador}</span></div>
-        <div class="sue-val" style="flex-direction:column;align-items:flex-end;grid-column:span 2">
-          <span style="font-size:10px;color:#888">Sueldo</span>
-          <span>${sue>0?'$'+fmt(sue):'—'}</span>
+      h += `<div style="display:grid;grid-template-columns:70px 1fr 120px;border-top:1px solid #e8e8e8;min-height:44px">
+        <div class="sue-turno-lbl ${t.cls}" style="flex-direction:column;gap:1px;align-items:flex-start;padding:6px 10px">
+          <span style="font-size:12px;font-weight:700">${t.lbl}</span>
+        </div>
+        <div style="padding:6px 10px;display:flex;align-items:center;border-right:1px solid #e8e8e8">
+          <span style="font-size:13px;font-weight:600;color:#333">${operador}</span>
+        </div>
+        <div style="padding:6px 10px;display:flex;align-items:center;justify-content:flex-end">
+          <span style="font-size:13px;font-weight:700;font-family:monospace;color:${sue>0?'#1f3864':'#ccc'}">${sue>0?'$'+fmt(sue):'—'}</span>
         </div>
       </div>`;
     });
