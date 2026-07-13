@@ -153,6 +153,19 @@ input.c.wh{color:#fff}
 .obs-cancel{background:#aaa;color:#fff;border:none;padding:5px 12px;border-radius:3px;cursor:pointer;font-size:11px}
 .obs-cancel:hover{background:#888}
 .obs-preview{font-size:10px;color:#555;font-style:italic;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle}
+/* Pestaña Sueldos */
+.sue-panel{border:1px solid #ddd;border-radius:8px;margin-bottom:12px;overflow:hidden}
+.sue-panel-hdr{padding:7px 12px;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:space-between}
+.sue-turno{display:grid;grid-template-columns:80px 1fr 1fr;gap:0;border-top:1px solid #e8e8e8}
+.sue-turno-lbl{padding:5px 10px;font-size:11px;font-weight:600;display:flex;align-items:center;border-right:1px solid #e8e8e8;color:#555}
+.sue-turno-lbl.M{background:#e8f4fd;color:#0070C0}
+.sue-turno-lbl.T{background:#e8f5e9;color:#2e7d32}
+.sue-turno-lbl.N{background:#f3e5f5;color:#6a1b9a}
+.sue-val{padding:5px 10px;font-size:13px;font-weight:600;font-family:monospace;text-align:right;border-right:1px solid #e8e8e8;display:flex;align-items:center;justify-content:flex-end}
+.sue-operador{padding:5px 10px;font-size:11px;color:#888;display:flex;align-items:center}
+.sue-novedad{width:100%;font-size:11px;font-family:Calibri,Arial,sans-serif;border:none;border-top:1px solid #e8e8e8;padding:6px 10px;background:#fffde7;resize:none;outline:none;min-height:38px}
+.sue-novedad:focus{background:#fff8e1}
+.sue-total{background:#f5f5f5;padding:6px 10px;font-size:12px;font-weight:700;text-align:right;border-top:1px solid #e8e8e8;color:#1f3864}
 .autosave{position:fixed;bottom:8px;right:12px;background:#333;color:#fff;font-size:10px;padding:3px 8px;border-radius:3px;display:none;z-index:300}
 /* Vista mensual */
 .mes-filtro{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0;margin-bottom:10px;border-bottom:2px solid #ddd}
@@ -234,6 +247,7 @@ input.premio-monto{width:100px;font-size:12px;padding:3px 6px;border:1px solid #
 
 <div class="sheet-tabs">
   <div class="stab active" onclick="showSheet('sh_mes',this)">📅 Mensual</div>
+  <div class="stab" onclick="showSheet('sh_sue',this)">💰 Sueldos</div>
   <div class="stab" onclick="showSheet('sh_carga',this)">Carga Fi</div>
   <div class="stab" onclick="showSheet('sh_dir',this)">Direcciones</div>
   <div class="stab" onclick="showSheet('sh_fra',this)">Francos</div>
@@ -241,6 +255,7 @@ input.premio-monto{width:100px;font-size:12px;padding:3px 6px;border:1px solid #
 </div>
 
 <div id="sh_mes"   class="sheet active"></div>
+<div id="sh_sue"   class="sheet"></div>
 <div id="sh_carga" class="sheet"></div>
 <div id="sh_dir"   class="sheet"></div>
 <div id="sh_fra"   class="sheet"></div>
@@ -322,9 +337,9 @@ function actualizarFlotante(shId) {
 async function cambiarMes() {
   MES = document.getElementById('mesSelect').value;
   window._MES = MES;
+  DIA_SUE = 1;
   await cargarDesdeFirebase();
   renderAll();
-  // Recargar sueldos/bonif para el nuevo mes
   if (window._cargarYCompletarSueldos) {
     await window._cargarYCompletarSueldos('sh_mes', MES);
   }
@@ -1689,6 +1704,125 @@ function recalcDiaMes(dk) {
   }
 }
 
+// ── RENDER SUELDOS ───────────────────────────────────────────
+let DIA_SUE = 1;
+
+function renderSueldos(diaNum) {
+  const el = document.getElementById('sh_sue');
+  if (!el) return;
+
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const [mesNom, anio] = MES.split(' ');
+  const m = meses.indexOf(mesNom);
+  const y = parseInt(anio);
+  const diasEnMes = new Date(y, m+1, 0).getDate();
+  const pad = n => String(n).padStart(2,'0');
+
+  if (diaNum !== undefined) DIA_SUE = diaNum;
+  if (DIA_SUE < 1) DIA_SUE = 1;
+  if (DIA_SUE > diasEnMes) DIA_SUE = diasEnMes;
+
+  const dia = DIA_SUE;
+  const dt = new Date(y, m, dia);
+  const DIAS_NOM = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const diaNom = DIAS_NOM[dt.getDay()];
+  const fecha = `${y}-${pad(m+1)}-${pad(dia)}`;
+  const esFer = esFeriado(dt);
+  const ferNom = esFer ? nombreFeriado(dt) : '';
+
+  // Leer sueldos del cache de Firebase
+  const cache = window._sueldosCache || {};
+  const PANEL_TO_AG = {
+    'Age 18':'AG 18','Age 19':'AG 19','Age 21':'AG 21','Age 22':'AG 22',
+    'Age 23':'AG 23','Age 24':'AG 24','Age 25':'AG 25','Sm':'SIEMPRE MONO'
+  };
+  const TURNOS = [{key:'manana',lbl:'Mañana',cls:'M'},{key:'tarde',lbl:'Tarde',cls:'T'},{key:'noche',lbl:'Noche',cls:'N'}];
+
+  let h = `
+  <!-- Navegador de días sueldos -->
+  <div style="display:flex;align-items:center;gap:10px;padding:10px 0 12px;border-bottom:1px solid #e5e7eb;margin-bottom:14px;flex-wrap:wrap">
+    <button class="arr-btn" onclick="navegarDiaSue(-1)">&#8592;</button>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:12px;color:#888">Día</span>
+      <input type="number" id="diaSueInput" value="${dia}" min="1" max="${diasEnMes}"
+        onchange="navegarDiaSueInput(this)"
+        style="width:55px;text-align:center;font-size:14px;font-weight:600;padding:4px 6px;border:1px solid #bbb;border-radius:6px;font-family:Calibri,Arial,sans-serif">
+      <span style="font-size:12px;color:#888">de ${diasEnMes}</span>
+    </div>
+    <button class="arr-btn" onclick="navegarDiaSue(1)">&#8594;</button>
+    <div style="font-size:14px;font-weight:700;color:${esFer?'#C00000':'#1f3864'};margin-left:8px">
+      ${diaNom} ${pad(dia)}/${pad(m+1)}/${y}
+      ${esFer?`<span style="font-size:11px;background:#C00000;color:#fff;padding:2px 8px;border-radius:10px;margin-left:6px">🗓 ${ferNom}</span>`:''}
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px">`;
+
+  PANELES.forEach((panel, pi) => {
+    const agKey = PANEL_TO_AG[panel];
+    const diaData = cache[agKey]?.[fecha] || {};
+    const col = PC[pi];
+    
+    let totalSue = 0;
+    let totalBon = 0;
+    TURNOS.forEach(t => {
+      totalSue += parseFloat(diaData[t.key]?.sueldo || 0);
+      totalBon += parseFloat(diaData[t.key]?.bonos || 0);
+    });
+
+    const novKey = `sue_nov_${y}${pad(m+1)}${pad(dia)}_p${pi}`;
+    const novVal = g(novKey) || '';
+
+    h += `<div class="sue-panel">
+      <div class="sue-panel-hdr ${col}" style="background:${col==='p18'?'#FFFF00':col==='p19'?'#FFC000':col==='p21'?'#FF0000':col==='p22'?'#00B050':col==='p23'?'#0070C0':col==='p24'?'#7030A0':col==='p25'?'#00B0F0':'#e0e0e0'};color:${['p21','p22','p23','p24'].includes(col)?'#fff':'#000'}">
+        <span>${panel}</span>
+        ${totalSue>0?`<span style="font-size:11px;font-weight:400">$${fmt(totalSue)}</span>`:'<span style="font-size:10px;font-weight:400;opacity:.6">Sin datos</span>'}
+      </div>`;
+
+    TURNOS.forEach(t => {
+      const sue = parseFloat(diaData[t.key]?.sueldo || 0);
+      const bon = parseFloat(diaData[t.key]?.bonos  || 0);
+      const operador = PERSONAL[pi]?.find(p => p.t === t.cls)?.n || '—';
+      h += `<div class="sue-turno">
+        <div class="sue-turno-lbl ${t.cls}">${t.lbl}<br><span style="font-weight:400;font-size:10px">${operador}</span></div>
+        <div class="sue-val" style="flex-direction:column;align-items:flex-end">
+          <span style="font-size:10px;color:#888">Sueldo</span>
+          <span>${sue>0?'$'+fmt(sue):'—'}</span>
+        </div>
+        <div class="sue-val" style="flex-direction:column;align-items:flex-end">
+          <span style="font-size:10px;color:#888">Bonif.</span>
+          <span style="color:${bon>0?'#2e7d32':'#ccc'}">${bon>0?'$'+fmt(bon):'—'}</span>
+        </div>
+      </div>`;
+    });
+
+    if (totalBon > 0) {
+      h += `<div class="sue-total">Total Bonif.: $${fmt(totalBon)}</div>`;
+    }
+
+    h += `<textarea class="sue-novedad" id="${novKey}" placeholder="📝 Novedades del agente..."
+        oninput="onInp(this)" onchange="onInp(this)">${novVal}</textarea>
+    </div>`;
+  });
+
+  h += `</div>`;
+  el.innerHTML = h;
+}
+
+function navegarDiaSue(delta) {
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const [mesNom, anio] = MES.split(' ');
+  const diasEnMes = new Date(parseInt(anio), meses.indexOf(mesNom)+1, 0).getDate();
+  DIA_SUE = Math.max(1, Math.min(diasEnMes, DIA_SUE + delta));
+  renderSueldos(DIA_SUE);
+}
+
+function navegarDiaSueInput(el) {
+  const val = parseInt(el.value);
+  if (!isNaN(val)) renderSueldos(val);
+}
+
 // ── RENDER ALL ───────────────────────────────────────────────
 function renderAll() {
   const mes = document.getElementById('mesSelect').value;
@@ -1696,6 +1830,7 @@ function renderAll() {
   window._MES = mes;
   DIA_ACTUAL = 1;
   renderMensual(1);
+  renderSueldos(1);
   renderCargas();
   renderDirecciones();
   renderFrancos();
