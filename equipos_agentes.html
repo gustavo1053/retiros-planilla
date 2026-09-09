@@ -78,6 +78,10 @@
     outline: none;
     border-color: var(--accent-dim);
   }
+  input[readonly]{
+    color: var(--text-dim);
+    cursor: default;
+  }
 
   .row2{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
@@ -379,7 +383,7 @@
 
     <div class="field">
       <label for="inpDireccion">Dirección</label>
-      <input type="text" id="inpDireccion" placeholder="Ej: Av. Corrientes 1234">
+      <input type="text" id="inpDireccion" placeholder="Se completa según el nombre cargado" readonly>
     </div>
 
     <div class="field">
@@ -475,6 +479,46 @@
   const AGENTES_FRANCO = ["FLOR","LUDMILA","SOFIA","VALU"];
   const AGENTES = [...AGENTES_TITULARES, ...AGENTES_FRANCO];
   const CUENTAS = ["Personal Pay","Claro Pay","AstroPay","Prex","NX","Lemon","Uala","Mercado Pago","ARQ","Buepp","Belo"];
+
+  // Fuente única: misma tabla "Direcciones del Personal" que index.html / retiros_v2.html (DIRS_DEF).
+  const DIRS_DEF = [
+    {nom:'Andrea', dir:'Charlone 2167 (Villa Ortuza)'},
+    {nom:'Meli',   dir:'Wagner 959 (Hurlingam)'},
+    {nom:'Tammi',  dir:'San Javier 2060 (Pablo Podestá)'},
+    {nom:'Lourdes',dir:'Belgrano 107 (Burzaco)'},
+    {nom:'Ingrid', dir:'Vicente López y Planes 8471 (Podestá)'},
+    {nom:'Nico',   dir:'Juan B. Alberdi 5691 (Caseros)'},
+    {nom:'Nao',    dir:'—'},
+    {nom:'Jhona',  dir:'Pichincha 4780 (Villa Coronel)'},
+    {nom:'Majo',   dir:'Ríos 1038 (Glew)'},
+    {nom:'Mili',   dir:'J.M. Bosche 6172 (San Martín)'},
+    {nom:'Vero',   dir:'Ceferino Namuncurá 3302 (Lanús)'},
+    {nom:'Jenni',  dir:'Prov. Santa Fe 68 entre Silva y Espora'},
+    {nom:'Agus M', dir:'J.M. Bosche 6172 (San Martín)'},
+    {nom:'Maria',  dir:'Cucha Cucha 779 (Caballito)'},
+    {nom:'Anto',   dir:'López 2898'},
+    {nom:'Agus',   dir:'L. López 2700 (Claypole)'},
+    {nom:'Romi',   dir:'J. Mazzini 2853 (Hurlingam)'},
+    {nom:'Jhoa',   dir:'511 2478 (Florencio Varela)'},
+    {nom:'Cami',   dir:'Augusto Prieto 553 (Lanús)'},
+    {nom:'Thiago', dir:'L. López 2700 (Claypole)'},
+    {nom:'Mayra',  dir:'Crisantemos 5965 (San Martín)'},
+    {nom:'Rafa',   dir:'Cucha Cucha 779 (Caballito)'},
+    {nom:'Brisa',  dir:'Lacroze 2053 (Villa Lynch)'},
+    {nom:'Mile',   dir:'—'},
+    {nom:'Flor',   dir:'Juan B. Alberdi 5691 (Caseros)'},
+    {nom:'Ludmi',  dir:'Clemenceau 44 (Gerli)'},
+    {nom:'Sofi',   dir:'Pichincha 4780 (Villa Coronel)'},
+    {nom:'Guada',  dir:'Crisantemos 5965 (San Martín)'},
+  ];
+  const normalizarNombre = (s) => (s || "").trim().toLowerCase();
+  const DIRECCIONES_POR_NOMBRE = {};
+  DIRS_DEF.forEach(d => { DIRECCIONES_POR_NOMBRE[normalizarNombre(d.nom)] = d.dir; });
+
+  function buscarDireccion(nombre){
+    const dir = DIRECCIONES_POR_NOMBRE[normalizarNombre(nombre)];
+    return (dir && dir !== "—") ? dir : "";
+  }
 
   const slug = (name) => name.toLowerCase().replace(/\s+/g, "_");
 
@@ -629,13 +673,18 @@
   });
   renderFotoGrid();
 
+  // --- Al escribir el nombre, autocompletar la dirección desde la lista maestra ---
+  inpNombre.addEventListener("input", () => {
+    inpDireccion.value = buscarDireccion(inpNombre.value);
+  });
+
   // --- Al elegir agente, precargar sus datos actuales ---
   selAgente.addEventListener("change", () => {
     const agente = selAgente.value;
     const data = cachedData[agente];
     if (data) {
       inpNombre.value = data.nombreAgente || "";
-      inpDireccion.value = data.direccion || "";
+      inpDireccion.value = buscarDireccion(data.nombreAgente) || data.direccion || "";
       selTurno.value = data.turno || "Mañana";
       resetCuentasState(data.cuentasActivas || null);
       inpMarca.value = data.marcaNotebook || "";
@@ -732,8 +781,9 @@
         const tagsHtml = nombresActivos.length
           ? `<div class="cuentas-tags">${nombresActivos.map(n => `<span class="tag">${n}</span>`).join("")}</div>`
           : `<div class="cuentas-tags"><span class="tag-none">Sin cuentas activas</span></div>`;
+        const direccion = buscarDireccion(data.nombreAgente) || data.direccion || "";
         infoHtml = `<div class="info">
-             <div class="name">${agente} <span class="shift-tag">${data.turno || ""}</span>${data.direccion ? ` <span class="address-tag">📍 ${data.direccion}</span>` : ""}</div>
+             <div class="name">${agente} <span class="shift-tag">${data.turno || ""}</span>${direccion ? ` <span class="address-tag">📍 ${direccion}</span>` : ""}</div>
              ${data.nombreAgente ? `<div class="meta" style="margin-top:0;">${data.nombreAgente}</div>` : ""}
              <div class="meta"><span class="n-cuentas">${nombresActivos.length}/${CUENTAS.length}</span> cuentas · ${data.marcaNotebook}</div>
              ${tagsHtml}
