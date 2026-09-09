@@ -378,7 +378,8 @@
 
     <div class="field">
       <label for="inpNombre">Nombre de operador</label>
-      <input type="text" id="inpNombre" placeholder="Ej: Juan Pérez">
+      <input type="text" id="inpNombre" placeholder="Ej: Andrea" list="listaNombresPersonal" autocomplete="off">
+      <datalist id="listaNombresPersonal"></datalist>
     </div>
 
     <div class="field">
@@ -511,9 +512,17 @@
     {nom:'Sofi',   dir:'Pichincha 4780 (Villa Coronel)'},
     {nom:'Guada',  dir:'Crisantemos 5965 (San Martín)'},
   ];
-  const normalizarNombre = (s) => (s || "").trim().toLowerCase();
+  const normalizarNombre = (s) => (s || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const DIRECCIONES_POR_NOMBRE = {};
   DIRS_DEF.forEach(d => { DIRECCIONES_POR_NOMBRE[normalizarNombre(d.nom)] = d.dir; });
+
+  // --- Poblar datalist con los nombres de la lista maestra (evita typos al tipear) ---
+  const listaNombresPersonal = document.getElementById("listaNombresPersonal");
+  DIRS_DEF.forEach(d => {
+    const opt = document.createElement("option");
+    opt.value = d.nom;
+    listaNombresPersonal.appendChild(opt);
+  });
 
   function buscarDireccion(nombre){
     const dir = DIRECCIONES_POR_NOMBRE[normalizarNombre(nombre)];
@@ -815,8 +824,16 @@
   }
 
   onSnapshot(collection(db, COLLECTION), (snap) => {
+    // Puede haber más de un documento para el mismo agente (restos de un
+    // esquema viejo con id por turno); nos quedamos con el más reciente.
     cachedData = {};
-    snap.forEach(d => { cachedData[d.data().agente] = d.data(); });
+    snap.forEach(d => {
+      const data = d.data();
+      const anterior = cachedData[data.agente];
+      const tsActual = data.ultimaActualizacion ? data.ultimaActualizacion.toMillis() : 0;
+      const tsAnterior = anterior && anterior.ultimaActualizacion ? anterior.ultimaActualizacion.toMillis() : 0;
+      if (!anterior || tsActual >= tsAnterior) cachedData[data.agente] = data;
+    });
 
     renderAgentGroup(agentListTitulares, AGENTES_TITULARES);
     renderAgentGroup(agentListFranco, AGENTES_FRANCO);
