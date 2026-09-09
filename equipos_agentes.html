@@ -265,6 +265,14 @@
     padding: 1px 6px;
     font-weight: 500;
   }
+  .agent-row .info .address-tag{
+    font-size: 0.66rem;
+    color: var(--accent);
+    border: 1px solid var(--accent-dim);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-weight: 500;
+  }
   .agent-row .info .meta{
     font-size: 0.8rem;
     color: var(--text-dim);
@@ -367,6 +375,11 @@
     <div class="field">
       <label for="inpNombre">Nombre de operador</label>
       <input type="text" id="inpNombre" placeholder="Ej: Juan Pérez">
+    </div>
+
+    <div class="field">
+      <label for="inpDireccion">Dirección</label>
+      <input type="text" id="inpDireccion" placeholder="Ej: Av. Corrientes 1234">
     </div>
 
     <div class="field">
@@ -517,6 +530,7 @@
 
   const selTurno = document.getElementById("selTurno");
   const inpNombre = document.getElementById("inpNombre");
+  const inpDireccion = document.getElementById("inpDireccion");
   const inpMarca = document.getElementById("inpMarca");
   const inpFotoCamara = document.getElementById("inpFotoCamara");
   const inpFotoGaleria = document.getElementById("inpFotoGaleria");
@@ -621,12 +635,14 @@
     const data = cachedData[agente];
     if (data) {
       inpNombre.value = data.nombreAgente || "";
+      inpDireccion.value = data.direccion || "";
       selTurno.value = data.turno || "Mañana";
       resetCuentasState(data.cuentasActivas || null);
       inpMarca.value = data.marcaNotebook || "";
       currentFotos = [...getFotosDe(data)];
     } else {
       inpNombre.value = "";
+      inpDireccion.value = "";
       selTurno.value = "Mañana";
       resetCuentasState(null);
       inpMarca.value = "";
@@ -651,6 +667,7 @@
       await setDoc(doc(db, COLLECTION, slug(agente)), {
         agente,
         nombreAgente: inpNombre.value.trim(),
+        direccion: inpDireccion.value.trim(),
         turno: selTurno.value,
         cuentasActivas: { ...cuentasState },
         marcaNotebook: inpMarca.value,
@@ -716,7 +733,7 @@
           ? `<div class="cuentas-tags">${nombresActivos.map(n => `<span class="tag">${n}</span>`).join("")}</div>`
           : `<div class="cuentas-tags"><span class="tag-none">Sin cuentas activas</span></div>`;
         infoHtml = `<div class="info">
-             <div class="name">${agente} <span class="shift-tag">${data.turno || ""}</span></div>
+             <div class="name">${agente} <span class="shift-tag">${data.turno || ""}</span>${data.direccion ? ` <span class="address-tag">📍 ${data.direccion}</span>` : ""}</div>
              ${data.nombreAgente ? `<div class="meta" style="margin-top:0;">${data.nombreAgente}</div>` : ""}
              <div class="meta"><span class="n-cuentas">${nombresActivos.length}/${CUENTAS.length}</span> cuentas · ${data.marcaNotebook}</div>
              ${tagsHtml}
