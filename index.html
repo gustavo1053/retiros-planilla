@@ -131,10 +131,10 @@ th{background:#d9e1f2;font-weight:700;text-align:center}
 .rojo{background:#FF0000!important;color:#000;font-weight:700}
 .calc{text-align:right;font-weight:700;background:#f9f9e8}
 .calc-r{background:#FF0000!important;color:#000;font-weight:700;text-align:right}
-input.c{border:none;background:transparent;width:100%;font-family:Calibri,Arial,sans-serif;font-size:11px;text-align:right;padding:0 2px;color:#000;outline:none}
-input.c:focus{background:#e8f0fe}
+input.c{border:1px solid #9aa1ab;border-radius:3px;background:transparent;width:100%;font-family:Calibri,Arial,sans-serif;font-size:11px;text-align:right;padding:1px 3px;color:#000;outline:none}
+input.c:focus{background:#e8f0fe;border-color:#1f3864;box-shadow:0 0 0 1px #1f3864}
 input.c.lft{text-align:left}
-input.c.wh{color:#fff}
+input.c.wh{color:#fff;border-color:rgba(255,255,255,.6)}
 .shdr{background:#1f3864;color:#fff;font-weight:700;font-size:12px;padding:4px 10px;margin-bottom:4px}
 .blk{border:1px solid #ccc;margin-bottom:10px;background:#fff}
 .blkhdr{background:#d9e1f2;font-weight:700;padding:3px 8px;font-size:11px;border-bottom:1px solid #ccc;display:flex;gap:12px;align-items:center}
@@ -291,11 +291,13 @@ input.premio-monto{width:100px;font-size:12px;padding:3px 6px;border:1px solid #
   <div class="stab" onclick="showSheet('sh_fra',this)">Francos</div>
   <div class="stab" onclick="showSheet('sh_prod',this)">🏆 Productividad</div>
   <div class="stab" onclick="showSheet('sh_comp',this)">🔍 Comparar Descarte</div>
+  <div class="stab" onclick="showSheet('sh_flujo',this)">🔄 Flujo de Fichas</div>
 </div>
 
 <div id="sh_mes"   class="sheet active"></div>
 <div id="sh_sue"   class="sheet"></div>
 <div id="sh_comp"  class="sheet"></div>
+<div id="sh_flujo" class="sheet"></div>
 <div id="sh_carga" class="sheet"></div>
 <div id="sh_dir"   class="sheet"></div>
 <div id="sh_fra"   class="sheet"></div>
@@ -323,6 +325,7 @@ const PERSONAL = [
 // ── ESTADO ──────────────────────────────────────────────────
 let MES = 'Junio 2026';
 let DATA = {};
+let FLUJO_DIA = 1;
 
 function g(k)   { return (DATA[MES] && DATA[MES][k] != null) ? DATA[MES][k] : ''; }
 function s(k,v) { if (!DATA[MES]) DATA[MES]={}; DATA[MES][k]=v; }
@@ -377,6 +380,10 @@ function showSheet(id, el) {
   // Al entrar a Comparar Descarte, traer datos de Control de Turnos y comparar
   if (id === 'sh_comp') {
     renderComparar();
+  }
+  // Al entrar a Flujo de Fichas, recalcular con los datos actuales del mes
+  if (id === 'sh_flujo') {
+    renderFlujoFichas();
   }
 }
 
@@ -469,6 +476,9 @@ function onInp(el) {
   // Carga: sh_carga_p2_c0_d3 → recalc esa carga
   const mCg = id.match(/^(sh_carga)_p(\d+)_c(\d+)_d(\d+)$/);
   if (mCg) recalcCarga(parseInt(mCg[3]));
+
+  // Flujo de Fichas: banco, compras del día, o carga/retiro/ficha inicial/final por agente-turno
+  if (id === 'fluj_stockIni' || /^fluj_\d{8}_(compras|p\d+_[mtn]_(fi|ff|carga|retiro))$/.test(id)) recalcFlujoFichas();
 
   autoSave();
 }
@@ -1133,6 +1143,240 @@ async function renderComparar() {
   }
 
   el.innerHTML = h;
+}
+
+// ── FLUJO DE FICHAS: Banco de Fichas + Carga/Retiro por agente y turno ──
+// El Banco de Fichas es el saldo central: entran Compras, salen las Cargas
+// que se le hacen a cada agente y vuelven los Retiros que se le hacen.
+// Cada agente (panel+turno) arranca con una Ficha Inicial y termina con una
+// Ficha Final; el Resultado = (Final - Inicial) - Carga + Retiro es lo
+// consumido en ese turno. Es un tablero independiente del descarte manual
+// de la solapa Mensual (no se tocan ni se cruzan entre sí).
+const FLUJO_TURNOS = [{k:'m',lbl:'Mañana'},{k:'t',lbl:'Tarde'},{k:'n',lbl:'Noche'}];
+
+function renderFlujoFichas(diaNum) {
+  const el = document.getElementById('sh_flujo');
+  if (!el) return;
+
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const [mesNom, anio] = MES.split(' ');
+  const m = meses.indexOf(mesNom);
+  const y = parseInt(anio);
+  const diasEnMes = new Date(y, m+1, 0).getDate();
+  const pad = n => String(n).padStart(2,'0');
+  const DIAS_NOM = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+
+  if (diaNum !== undefined) FLUJO_DIA = diaNum;
+  if (FLUJO_DIA < 1) FLUJO_DIA = 1;
+  if (FLUJO_DIA > diasEnMes) FLUJO_DIA = diasEnMes;
+  const dia = FLUJO_DIA;
+  const dt = new Date(y, m, dia);
+  const dk8 = `${y}${pad(m+1)}${pad(dia)}`;
+
+  let h = `<div class="shdr">🔄 Flujo de Fichas — Banco, Carga y Retiro por Agente/Turno — ${MES}</div>`;
+
+  // Navegador de días
+  h += `<div style="display:flex;align-items:center;gap:10px;padding:10px 0 12px;border-bottom:1px solid #e5e7eb;margin-bottom:12px;flex-wrap:wrap">
+    <button class="arr-btn" onclick="navegarDiaFlujo(-1)" style="width:32px;height:32px;font-size:18px" title="Día anterior">&#8592;</button>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:12px;color:#888">Día</span>
+      <input type="number" id="flujoDiaInput" value="${dia}" min="1" max="${diasEnMes}"
+        onchange="navegarDiaFlujoInput(this)"
+        style="width:55px;text-align:center;font-size:14px;font-weight:600;padding:4px 6px;border:1px solid #bbb;border-radius:6px;font-family:Calibri,Arial,sans-serif">
+      <span style="font-size:12px;color:#888">de ${diasEnMes}</span>
+    </div>
+    <button class="arr-btn" onclick="navegarDiaFlujo(1)" style="width:32px;height:32px;font-size:18px" title="Día siguiente">&#8594;</button>
+    <div style="margin-left:8px;font-size:14px;font-weight:700;color:#1f3864">${DIAS_NOM[dt.getDay()]} ${pad(dia)}/${pad(m+1)}/${y}</div>
+
+    <div style="width:100%;margin-top:10px;background:#fff;border:1px solid #dfe3ea;border-radius:8px;padding:10px 6px;display:flex;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px;border-right:1px solid #e8e8e8">
+        <span style="font-size:10px;color:#8a8f98">Stock Inicial Banco (mes)</span>
+        ${inp('fluj_stockIni')}
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px;border-right:1px solid #e8e8e8">
+        <span style="font-size:10px;color:#8a8f98">Compras del día</span>
+        ${inp(`fluj_${dk8}_compras`)}
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px">
+        <span style="font-size:10px;color:#8a8f98">🏦 Banco de Fichas (al ${pad(dia)}/${pad(m+1)})</span>
+        <span id="fluj_bancoDia" style="font-size:16px;font-weight:700;color:#1f3864;font-family:monospace">—</span>
+      </div>
+    </div>
+
+    <div style="width:100%;margin-top:6px;background:#fff;border:1px solid #dfe3ea;border-radius:8px;padding:10px 6px;display:flex;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px;border-right:1px solid #e8e8e8">
+        <span style="font-size:10px;color:#8a8f98">Compras (mes)</span>
+        <span id="fluj_totComprasMes" style="font-size:14px;font-weight:700;color:#1a7a1a;font-family:monospace">—</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px;border-right:1px solid #e8e8e8">
+        <span style="font-size:10px;color:#8a8f98">Carga a agentes (mes)</span>
+        <span id="fluj_totCargaMes" style="font-size:14px;font-weight:700;color:#c55a11;font-family:monospace">—</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px;border-right:1px solid #e8e8e8">
+        <span style="font-size:10px;color:#8a8f98">Retiro de agentes (mes)</span>
+        <span id="fluj_totRetiroMes" style="font-size:14px;font-weight:700;color:#0d47a1;font-family:monospace">—</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px;border-right:1px solid #e8e8e8">
+        <span style="font-size:10px;color:#8a8f98">Descarte (mes)</span>
+        <span id="fluj_totDescarteMes" style="font-size:14px;font-weight:700;color:#c00000;font-family:monospace">—</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px">
+        <span style="font-size:10px;color:#8a8f98">Banco Final del Mes</span>
+        <span id="fluj_bancoFinalMes" style="font-size:14px;font-weight:700;color:#1f3864;font-family:monospace">—</span>
+      </div>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr>
+      <th style="width:90px">Panel</th>
+      <th style="width:70px">Turno</th>
+      <th style="width:110px">Ficha Inicial</th>
+      <th style="width:110px">Ficha Final</th>
+      <th style="width:100px">Carga</th>
+      <th style="width:100px">Retiro</th>
+      <th style="width:100px">Resultado</th>
+    </tr></thead>
+    <tbody>`;
+
+  PANELES.forEach((p,pi) => {
+    FLUJO_TURNOS.forEach((t,ti) => {
+      // El primer turno del mes (día 1, Mañana) es el único con Ficha Inicial
+      // manual (semilla); todos los demás se encadenan solos desde el cierre
+      // del turno anterior (mismo panel).
+      const esPrimerTurnoMes = (dia === 1 && ti === 0);
+      const tdFi = esPrimerTurnoMes
+        ? `<td>${inp(`fluj_${dk8}_p${pi}_${t.k}_fi`)}</td>`
+        : `<td class="calc" id="fluj_${dk8}_p${pi}_${t.k}_fi" title="Se toma automáticamente del cierre del turno anterior"></td>`;
+      h += `<tr>
+        ${ti===0 ? `<td class="${PC[pi]}" rowspan="3">${p}</td>` : ''}
+        <td style="text-align:center">${t.lbl}</td>
+        ${tdFi}
+        <td>${inp(`fluj_${dk8}_p${pi}_${t.k}_ff`)}</td>
+        <td>${inp(`fluj_${dk8}_p${pi}_${t.k}_carga`)}</td>
+        <td>${inp(`fluj_${dk8}_p${pi}_${t.k}_retiro`)}</td>
+        <td class="calc" id="fluj_${dk8}_p${pi}_${t.k}_res"></td>
+      </tr>`;
+    });
+  });
+
+  h += `<tr class="rojo">
+      <td colspan="2">Total Día</td>
+      <td></td><td></td>
+      <td class="calc-r" id="fluj_${dk8}_totCarga"></td>
+      <td class="calc-r" id="fluj_${dk8}_totRetiro"></td>
+      <td class="calc-r" id="fluj_${dk8}_totDescarte"></td>
+    </tr></tbody>
+  </table>`;
+
+  // Sector aparte: sumatoria de fichas compradas, día a día, todo el mes
+  h += `<div class="shdr" style="margin-top:16px">🧾 Compras de Fichas — Detalle del Mes</div>
+  <table><thead><tr>
+    <th style="width:60px">Día</th>
+    <th style="width:100px">Fecha</th>
+    <th style="width:150px">Fichas Compradas</th>
+  </tr></thead><tbody>`;
+
+  for (let d=1; d<=diasEnMes; d++) {
+    const dkc = `${y}${pad(m+1)}${pad(d)}`;
+    const dtc = new Date(y, m, d);
+    h += `<tr ${d===dia?'style="background:#fffbe0"':''}>
+      <td style="text-align:center">${d}</td>
+      <td style="text-align:center">${DIAS_NOM[dtc.getDay()].slice(0,3)} ${pad(d)}/${pad(m+1)}</td>
+      <td class="calc" id="fluj_${dkc}_comprasList"></td>
+    </tr>`;
+  }
+
+  h += `<tr class="rojo"><td colspan="2">Total Compradas del Mes</td>
+    <td class="calc-r" id="fluj_totComprasTabla"></td>
+  </tr></tbody></table>`;
+
+  el.innerHTML = h;
+  recalcFlujoFichas();
+}
+
+function navegarDiaFlujo(delta) {
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const [mesNom, anio] = MES.split(' ');
+  const m = meses.indexOf(mesNom);
+  const y = parseInt(anio);
+  const diasEnMes = new Date(y, m+1, 0).getDate();
+  FLUJO_DIA = Math.max(1, Math.min(diasEnMes, FLUJO_DIA + delta));
+  renderFlujoFichas(FLUJO_DIA);
+}
+
+function navegarDiaFlujoInput(el) {
+  const val = parseInt(el.value);
+  if (!isNaN(val)) renderFlujoFichas(val);
+}
+
+function recalcFlujoFichas() {
+  const el = document.getElementById('sh_flujo');
+  if (!el) return;
+
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const [mesNom, anio] = MES.split(' ');
+  const m = meses.indexOf(mesNom);
+  const y = parseInt(anio);
+  const diasEnMes = new Date(y, m+1, 0).getDate();
+  const pad = n => String(n).padStart(2,'0');
+
+  let banco = nv(g('fluj_stockIni'));
+  let bancoAlDia = banco;
+  let totComprasMes = 0, totCargaMes = 0, totRetiroMes = 0, totDescarteMes = 0;
+
+  // Ficha Final del turno anterior de cada panel (encadena Mañana→Tarde→Noche
+  // y de un día al siguiente); arranca en null porque el día 1 Mañana usa
+  // su propia Ficha Inicial manual (semilla).
+  const prevFF = {};
+
+  for (let d=1; d<=diasEnMes; d++) {
+    const dk8 = `${y}${pad(m+1)}${pad(d)}`;
+    const compras = nv(g(`fluj_${dk8}_compras`));
+    let totCargaDia = 0, totRetiroDia = 0, totDescarteDia = 0;
+
+    PANELES.forEach((p,pi) => {
+      FLUJO_TURNOS.forEach((t,ti) => {
+        const esPrimerTurnoMes = (d === 1 && ti === 0);
+        const fi = esPrimerTurnoMes
+          ? nv(g(`fluj_${dk8}_p${pi}_${t.k}_fi`))
+          : (prevFF[pi] || 0);
+        const ff = nv(g(`fluj_${dk8}_p${pi}_${t.k}_ff`));
+        const carga = nv(g(`fluj_${dk8}_p${pi}_${t.k}_carga`));
+        const retiro = nv(g(`fluj_${dk8}_p${pi}_${t.k}_retiro`));
+        const resultado = (ff - fi) - carga + retiro;
+        totCargaDia += carga; totRetiroDia += retiro; totDescarteDia += resultado;
+        if (!esPrimerTurnoMes) sc(`fluj_${dk8}_p${pi}_${t.k}_fi`, fi);
+        sc(`fluj_${dk8}_p${pi}_${t.k}_res`, resultado);
+        prevFF[pi] = ff;
+      });
+    });
+
+    banco = banco + compras - totCargaDia + totRetiroDia;
+    if (d === FLUJO_DIA) bancoAlDia = banco;
+
+    sc(`fluj_${dk8}_comprasList`, compras);
+    sc(`fluj_${dk8}_totCarga`, totCargaDia);
+    sc(`fluj_${dk8}_totRetiro`, totRetiroDia);
+    sc(`fluj_${dk8}_totDescarte`, totDescarteDia);
+
+    totComprasMes += compras;
+    totCargaMes   += totCargaDia;
+    totRetiroMes  += totRetiroDia;
+    totDescarteMes += totDescarteDia;
+  }
+
+  const setTxt = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = fmt(val) || '0'; };
+  setTxt('fluj_bancoDia', bancoAlDia);
+  setTxt('fluj_totComprasMes', totComprasMes);
+  setTxt('fluj_totComprasTabla', totComprasMes);
+  setTxt('fluj_totCargaMes', totCargaMes);
+  setTxt('fluj_totRetiroMes', totRetiroMes);
+  setTxt('fluj_totDescarteMes', totDescarteMes);
+  setTxt('fluj_bancoFinalMes', banco);
 }
 
 function renderCargas() {
