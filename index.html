@@ -325,6 +325,7 @@ const PERSONAL = [
 // ── ESTADO ──────────────────────────────────────────────────
 let MES = 'Junio 2026';
 let DATA = {};
+let FLUJO_DIA = 1;
 
 function g(k)   { return (DATA[MES] && DATA[MES][k] != null) ? DATA[MES][k] : ''; }
 function s(k,v) { if (!DATA[MES]) DATA[MES]={}; DATA[MES][k]=v; }
@@ -476,8 +477,8 @@ function onInp(el) {
   const mCg = id.match(/^(sh_carga)_p(\d+)_c(\d+)_d(\d+)$/);
   if (mCg) recalcCarga(parseInt(mCg[3]));
 
-  // Flujo de Fichas: fluj_stockIni o fluj_YYYYMMDD_compradas → recalc todo el flujo
-  if (id === 'fluj_stockIni' || /^fluj_\d{8}_compradas$/.test(id)) recalcFlujoFichas();
+  // Flujo de Fichas: banco, compras del día, o carga/retiro/ficha inicial/final por agente-turno
+  if (id === 'fluj_stockIni' || /^fluj_\d{8}_(compras|p\d+_[mtn]_(fi|ff|carga|retiro))$/.test(id)) recalcFlujoFichas();
 
   autoSave();
 }
@@ -1144,10 +1145,16 @@ async function renderComparar() {
   el.innerHTML = h;
 }
 
-// ── FLUJO DE FICHAS: stock, compras y descarte por día ──────────
-// El descarte de cada día se toma de los valores ya cargados en la solapa
-// Mensual (Mañana/Tarde/Noche por panel); acá solo se carga "Compradas".
-function renderFlujoFichas() {
+// ── FLUJO DE FICHAS: Banco de Fichas + Carga/Retiro por agente y turno ──
+// El Banco de Fichas es el saldo central: entran Compras, salen las Cargas
+// que se le hacen a cada agente y vuelven los Retiros que se le hacen.
+// Cada agente (panel+turno) arranca con una Ficha Inicial y termina con una
+// Ficha Final; el Resultado = (Final - Inicial) - Carga + Retiro es lo
+// consumido en ese turno. Es un tablero independiente del descarte manual
+// de la solapa Mensual (no se tocan ni se cruzan entre sí).
+const FLUJO_TURNOS = [{k:'m',lbl:'Mañana'},{k:'t',lbl:'Tarde'},{k:'n',lbl:'Noche'}];
+
+function renderFlujoFichas(diaNum) {
   const el = document.getElementById('sh_flujo');
   if (!el) return;
 
@@ -1160,43 +1167,120 @@ function renderFlujoFichas() {
   const pad = n => String(n).padStart(2,'0');
   const DIAS_NOM = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
-  let h = `<div class="shdr">🔄 Flujo de Fichas — Stock, Compras y Descarte — ${MES}</div>`;
+  if (diaNum !== undefined) FLUJO_DIA = diaNum;
+  if (FLUJO_DIA < 1) FLUJO_DIA = 1;
+  if (FLUJO_DIA > diasEnMes) FLUJO_DIA = diasEnMes;
+  const dia = FLUJO_DIA;
+  const dt = new Date(y, m, dia);
+  const dk8 = `${y}${pad(m+1)}${pad(dia)}`;
 
-  h += `<div style="padding:10px 12px;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #ddd;border-radius:6px;margin-bottom:10px">
-    <span style="font-size:12px;font-weight:700">Stock Inicial del Mes</span>
-    ${inp('fluj_stockIni')}
-  </div>`;
+  let h = `<div class="shdr">🔄 Flujo de Fichas — Banco, Carga y Retiro por Agente/Turno — ${MES}</div>`;
 
-  h += `<div style="padding:10px 12px;display:flex;gap:24px;flex-wrap:wrap;font-size:12px;background:#fff;border:1px solid #ddd;border-radius:6px;margin-bottom:10px">
-    <span>Total Compradas: <b id="fluj_totCompradas" style="color:#1a7a1a">—</b></span>
-    <span>Total Descarte: <b id="fluj_totDescarte" style="color:#c00000">—</b></span>
-    <span>Stock Final del Mes: <b id="fluj_stockFinal" style="color:#1f3864">—</b></span>
-  </div>`;
+  // Navegador de días
+  h += `<div style="display:flex;align-items:center;gap:10px;padding:10px 0 12px;border-bottom:1px solid #e5e7eb;margin-bottom:12px;flex-wrap:wrap">
+    <button class="arr-btn" onclick="navegarDiaFlujo(-1)" style="width:32px;height:32px;font-size:18px" title="Día anterior">&#8592;</button>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:12px;color:#888">Día</span>
+      <input type="number" id="flujoDiaInput" value="${dia}" min="1" max="${diasEnMes}"
+        onchange="navegarDiaFlujoInput(this)"
+        style="width:55px;text-align:center;font-size:14px;font-weight:600;padding:4px 6px;border:1px solid #bbb;border-radius:6px;font-family:Calibri,Arial,sans-serif">
+      <span style="font-size:12px;color:#888">de ${diasEnMes}</span>
+    </div>
+    <button class="arr-btn" onclick="navegarDiaFlujo(1)" style="width:32px;height:32px;font-size:18px" title="Día siguiente">&#8594;</button>
+    <div style="margin-left:8px;font-size:14px;font-weight:700;color:#1f3864">${DIAS_NOM[dt.getDay()]} ${pad(dia)}/${pad(m+1)}/${y}</div>
 
-  h += `<table><thead><tr>
-    <th style="width:60px">Día</th>
-    <th style="width:100px">Fecha</th>
-    <th style="width:130px">Compradas</th>
-    <th style="width:130px">Descarte</th>
-    <th style="width:130px">Stock</th>
-  </tr></thead><tbody>`;
+    <div style="width:100%;margin-top:10px;background:#fff;border:1px solid #dfe3ea;border-radius:8px;padding:10px 6px;display:flex;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px;border-right:1px solid #e8e8e8">
+        <span style="font-size:10px;color:#8a8f98">Stock Inicial Banco (mes)</span>
+        ${inp('fluj_stockIni')}
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px;border-right:1px solid #e8e8e8">
+        <span style="font-size:10px;color:#8a8f98">Compras del día</span>
+        ${inp(`fluj_${dk8}_compras`)}
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px">
+        <span style="font-size:10px;color:#8a8f98">🏦 Banco de Fichas (al ${pad(dia)}/${pad(m+1)})</span>
+        <span id="fluj_bancoDia" style="font-size:16px;font-weight:700;color:#1f3864;font-family:monospace">—</span>
+      </div>
+    </div>
 
-  for (let d=1; d<=diasEnMes; d++) {
-    const dk8 = `${y}${pad(m+1)}${pad(d)}`;
-    const dt = new Date(y, m, d);
-    h += `<tr>
-      <td style="text-align:center">${d}</td>
-      <td style="text-align:center">${DIAS_NOM[dt.getDay()].slice(0,3)} ${pad(d)}/${pad(m+1)}</td>
-      <td>${inp(`fluj_${dk8}_compradas`)}</td>
-      <td class="calc" id="fluj_${dk8}_descarte"></td>
-      <td class="calc" id="fluj_${dk8}_stock"></td>
-    </tr>`;
-  }
+    <div style="width:100%;margin-top:6px;background:#fff;border:1px solid #dfe3ea;border-radius:8px;padding:10px 6px;display:flex;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px;border-right:1px solid #e8e8e8">
+        <span style="font-size:10px;color:#8a8f98">Compras (mes)</span>
+        <span id="fluj_totComprasMes" style="font-size:14px;font-weight:700;color:#1a7a1a;font-family:monospace">—</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px;border-right:1px solid #e8e8e8">
+        <span style="font-size:10px;color:#8a8f98">Carga a agentes (mes)</span>
+        <span id="fluj_totCargaMes" style="font-size:14px;font-weight:700;color:#c55a11;font-family:monospace">—</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px;border-right:1px solid #e8e8e8">
+        <span style="font-size:10px;color:#8a8f98">Retiro de agentes (mes)</span>
+        <span id="fluj_totRetiroMes" style="font-size:14px;font-weight:700;color:#0d47a1;font-family:monospace">—</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px;border-right:1px solid #e8e8e8">
+        <span style="font-size:10px;color:#8a8f98">Descarte (mes)</span>
+        <span id="fluj_totDescarteMes" style="font-size:14px;font-weight:700;color:#c00000;font-family:monospace">—</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px">
+        <span style="font-size:10px;color:#8a8f98">Banco Final del Mes</span>
+        <span id="fluj_bancoFinalMes" style="font-size:14px;font-weight:700;color:#1f3864;font-family:monospace">—</span>
+      </div>
+    </div>
+  </div>
 
-  h += `</tbody></table>`;
+  <table>
+    <thead><tr>
+      <th style="width:90px">Panel</th>
+      <th style="width:70px">Turno</th>
+      <th style="width:110px">Ficha Inicial</th>
+      <th style="width:110px">Ficha Final</th>
+      <th style="width:100px">Carga</th>
+      <th style="width:100px">Retiro</th>
+      <th style="width:100px">Resultado</th>
+    </tr></thead>
+    <tbody>`;
+
+  PANELES.forEach((p,pi) => {
+    FLUJO_TURNOS.forEach((t,ti) => {
+      h += `<tr>
+        ${ti===0 ? `<td class="${PC[pi]}" rowspan="3">${p}</td>` : ''}
+        <td style="text-align:center">${t.lbl}</td>
+        <td>${inp(`fluj_${dk8}_p${pi}_${t.k}_fi`)}</td>
+        <td>${inp(`fluj_${dk8}_p${pi}_${t.k}_ff`)}</td>
+        <td>${inp(`fluj_${dk8}_p${pi}_${t.k}_carga`)}</td>
+        <td>${inp(`fluj_${dk8}_p${pi}_${t.k}_retiro`)}</td>
+        <td class="calc" id="fluj_${dk8}_p${pi}_${t.k}_res"></td>
+      </tr>`;
+    });
+  });
+
+  h += `<tr class="rojo">
+      <td colspan="2">Total Día</td>
+      <td></td><td></td>
+      <td class="calc-r" id="fluj_${dk8}_totCarga"></td>
+      <td class="calc-r" id="fluj_${dk8}_totRetiro"></td>
+      <td class="calc-r" id="fluj_${dk8}_totDescarte"></td>
+    </tr></tbody>
+  </table>`;
 
   el.innerHTML = h;
   recalcFlujoFichas();
+}
+
+function navegarDiaFlujo(delta) {
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const [mesNom, anio] = MES.split(' ');
+  const m = meses.indexOf(mesNom);
+  const y = parseInt(anio);
+  const diasEnMes = new Date(y, m+1, 0).getDate();
+  FLUJO_DIA = Math.max(1, Math.min(diasEnMes, FLUJO_DIA + delta));
+  renderFlujoFichas(FLUJO_DIA);
+}
+
+function navegarDiaFlujoInput(el) {
+  const val = parseInt(el.value);
+  if (!isNaN(val)) renderFlujoFichas(val);
 }
 
 function recalcFlujoFichas() {
@@ -1211,33 +1295,47 @@ function recalcFlujoFichas() {
   const diasEnMes = new Date(y, m+1, 0).getDate();
   const pad = n => String(n).padStart(2,'0');
 
-  let stockPrev = nv(g('fluj_stockIni'));
-  let totalCompradas = 0, totalDescarte = 0;
+  let banco = nv(g('fluj_stockIni'));
+  let bancoAlDia = banco;
+  let totComprasMes = 0, totCargaMes = 0, totRetiroMes = 0, totDescarteMes = 0;
 
   for (let d=1; d<=diasEnMes; d++) {
     const dk8 = `${y}${pad(m+1)}${pad(d)}`;
-    const dkd = `mes_${dk8}`;
-    let descarteDia = 0;
+    const compras = nv(g(`fluj_${dk8}_compras`));
+    let totCargaDia = 0, totRetiroDia = 0, totDescarteDia = 0;
+
     PANELES.forEach((p,pi) => {
-      descarteDia += nv(g(`${dkd}_p${pi}_m`)) + nv(g(`${dkd}_p${pi}_t`)) + nv(g(`${dkd}_p${pi}_n`));
+      FLUJO_TURNOS.forEach(t => {
+        const fi = nv(g(`fluj_${dk8}_p${pi}_${t.k}_fi`));
+        const ff = nv(g(`fluj_${dk8}_p${pi}_${t.k}_ff`));
+        const carga = nv(g(`fluj_${dk8}_p${pi}_${t.k}_carga`));
+        const retiro = nv(g(`fluj_${dk8}_p${pi}_${t.k}_retiro`));
+        const resultado = (ff - fi) - carga + retiro;
+        totCargaDia += carga; totRetiroDia += retiro; totDescarteDia += resultado;
+        sc(`fluj_${dk8}_p${pi}_${t.k}_res`, resultado);
+      });
     });
-    const compradas = nv(g(`fluj_${dk8}_compradas`));
-    const stockDia = stockPrev + compradas - descarteDia;
 
-    sc(`fluj_${dk8}_descarte`, descarteDia);
-    sc(`fluj_${dk8}_stock`, stockDia);
+    banco = banco + compras - totCargaDia + totRetiroDia;
+    if (d === FLUJO_DIA) bancoAlDia = banco;
 
-    totalCompradas += compradas;
-    totalDescarte  += descarteDia;
-    stockPrev = stockDia;
+    sc(`fluj_${dk8}_totCarga`, totCargaDia);
+    sc(`fluj_${dk8}_totRetiro`, totRetiroDia);
+    sc(`fluj_${dk8}_totDescarte`, totDescarteDia);
+
+    totComprasMes += compras;
+    totCargaMes   += totCargaDia;
+    totRetiroMes  += totRetiroDia;
+    totDescarteMes += totDescarteDia;
   }
 
-  const elTC = document.getElementById('fluj_totCompradas');
-  const elTD = document.getElementById('fluj_totDescarte');
-  const elSF = document.getElementById('fluj_stockFinal');
-  if (elTC) elTC.textContent = fmt(totalCompradas) || '0';
-  if (elTD) elTD.textContent = fmt(totalDescarte) || '0';
-  if (elSF) elSF.textContent = fmt(stockPrev) || '0';
+  const setTxt = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = fmt(val) || '0'; };
+  setTxt('fluj_bancoDia', bancoAlDia);
+  setTxt('fluj_totComprasMes', totComprasMes);
+  setTxt('fluj_totCargaMes', totCargaMes);
+  setTxt('fluj_totRetiroMes', totRetiroMes);
+  setTxt('fluj_totDescarteMes', totDescarteMes);
+  setTxt('fluj_bancoFinalMes', banco);
 }
 
 function renderCargas() {
