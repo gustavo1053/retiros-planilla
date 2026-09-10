@@ -291,11 +291,13 @@ input.premio-monto{width:100px;font-size:12px;padding:3px 6px;border:1px solid #
   <div class="stab" onclick="showSheet('sh_fra',this)">Francos</div>
   <div class="stab" onclick="showSheet('sh_prod',this)">🏆 Productividad</div>
   <div class="stab" onclick="showSheet('sh_comp',this)">🔍 Comparar Descarte</div>
+  <div class="stab" onclick="showSheet('sh_flujo',this)">🔄 Flujo de Fichas</div>
 </div>
 
 <div id="sh_mes"   class="sheet active"></div>
 <div id="sh_sue"   class="sheet"></div>
 <div id="sh_comp"  class="sheet"></div>
+<div id="sh_flujo" class="sheet"></div>
 <div id="sh_carga" class="sheet"></div>
 <div id="sh_dir"   class="sheet"></div>
 <div id="sh_fra"   class="sheet"></div>
@@ -377,6 +379,10 @@ function showSheet(id, el) {
   // Al entrar a Comparar Descarte, traer datos de Control de Turnos y comparar
   if (id === 'sh_comp') {
     renderComparar();
+  }
+  // Al entrar a Flujo de Fichas, recalcular con los datos actuales del mes
+  if (id === 'sh_flujo') {
+    renderFlujoFichas();
   }
 }
 
@@ -469,6 +475,9 @@ function onInp(el) {
   // Carga: sh_carga_p2_c0_d3 → recalc esa carga
   const mCg = id.match(/^(sh_carga)_p(\d+)_c(\d+)_d(\d+)$/);
   if (mCg) recalcCarga(parseInt(mCg[3]));
+
+  // Flujo de Fichas: fluj_stockIni o fluj_YYYYMMDD_compradas → recalc todo el flujo
+  if (id === 'fluj_stockIni' || /^fluj_\d{8}_compradas$/.test(id)) recalcFlujoFichas();
 
   autoSave();
 }
@@ -1133,6 +1142,102 @@ async function renderComparar() {
   }
 
   el.innerHTML = h;
+}
+
+// ── FLUJO DE FICHAS: stock, compras y descarte por día ──────────
+// El descarte de cada día se toma de los valores ya cargados en la solapa
+// Mensual (Mañana/Tarde/Noche por panel); acá solo se carga "Compradas".
+function renderFlujoFichas() {
+  const el = document.getElementById('sh_flujo');
+  if (!el) return;
+
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const [mesNom, anio] = MES.split(' ');
+  const m = meses.indexOf(mesNom);
+  const y = parseInt(anio);
+  const diasEnMes = new Date(y, m+1, 0).getDate();
+  const pad = n => String(n).padStart(2,'0');
+  const DIAS_NOM = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+
+  let h = `<div class="shdr">🔄 Flujo de Fichas — Stock, Compras y Descarte — ${MES}</div>`;
+
+  h += `<div style="padding:10px 12px;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #ddd;border-radius:6px;margin-bottom:10px">
+    <span style="font-size:12px;font-weight:700">Stock Inicial del Mes</span>
+    ${inp('fluj_stockIni')}
+  </div>`;
+
+  h += `<div style="padding:10px 12px;display:flex;gap:24px;flex-wrap:wrap;font-size:12px;background:#fff;border:1px solid #ddd;border-radius:6px;margin-bottom:10px">
+    <span>Total Compradas: <b id="fluj_totCompradas" style="color:#1a7a1a">—</b></span>
+    <span>Total Descarte: <b id="fluj_totDescarte" style="color:#c00000">—</b></span>
+    <span>Stock Final del Mes: <b id="fluj_stockFinal" style="color:#1f3864">—</b></span>
+  </div>`;
+
+  h += `<table><thead><tr>
+    <th style="width:60px">Día</th>
+    <th style="width:100px">Fecha</th>
+    <th style="width:130px">Compradas</th>
+    <th style="width:130px">Descarte</th>
+    <th style="width:130px">Stock</th>
+  </tr></thead><tbody>`;
+
+  for (let d=1; d<=diasEnMes; d++) {
+    const dk8 = `${y}${pad(m+1)}${pad(d)}`;
+    const dt = new Date(y, m, d);
+    h += `<tr>
+      <td style="text-align:center">${d}</td>
+      <td style="text-align:center">${DIAS_NOM[dt.getDay()].slice(0,3)} ${pad(d)}/${pad(m+1)}</td>
+      <td>${inp(`fluj_${dk8}_compradas`)}</td>
+      <td class="calc" id="fluj_${dk8}_descarte"></td>
+      <td class="calc" id="fluj_${dk8}_stock"></td>
+    </tr>`;
+  }
+
+  h += `</tbody></table>`;
+
+  el.innerHTML = h;
+  recalcFlujoFichas();
+}
+
+function recalcFlujoFichas() {
+  const el = document.getElementById('sh_flujo');
+  if (!el) return;
+
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const [mesNom, anio] = MES.split(' ');
+  const m = meses.indexOf(mesNom);
+  const y = parseInt(anio);
+  const diasEnMes = new Date(y, m+1, 0).getDate();
+  const pad = n => String(n).padStart(2,'0');
+
+  let stockPrev = nv(g('fluj_stockIni'));
+  let totalCompradas = 0, totalDescarte = 0;
+
+  for (let d=1; d<=diasEnMes; d++) {
+    const dk8 = `${y}${pad(m+1)}${pad(d)}`;
+    const dkd = `mes_${dk8}`;
+    let descarteDia = 0;
+    PANELES.forEach((p,pi) => {
+      descarteDia += nv(g(`${dkd}_p${pi}_m`)) + nv(g(`${dkd}_p${pi}_t`)) + nv(g(`${dkd}_p${pi}_n`));
+    });
+    const compradas = nv(g(`fluj_${dk8}_compradas`));
+    const stockDia = stockPrev + compradas - descarteDia;
+
+    sc(`fluj_${dk8}_descarte`, descarteDia);
+    sc(`fluj_${dk8}_stock`, stockDia);
+
+    totalCompradas += compradas;
+    totalDescarte  += descarteDia;
+    stockPrev = stockDia;
+  }
+
+  const elTC = document.getElementById('fluj_totCompradas');
+  const elTD = document.getElementById('fluj_totDescarte');
+  const elSF = document.getElementById('fluj_stockFinal');
+  if (elTC) elTC.textContent = fmt(totalCompradas) || '0';
+  if (elTD) elTD.textContent = fmt(totalDescarte) || '0';
+  if (elSF) elSF.textContent = fmt(stockPrev) || '0';
 }
 
 function renderCargas() {
