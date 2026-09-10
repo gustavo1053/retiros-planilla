@@ -1196,7 +1196,7 @@ function renderFlujoFichas(diaNum) {
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px;border-right:1px solid #e8e8e8">
         <span style="font-size:10px;color:#8a8f98">Compras del día</span>
-        ${inp(`fluj_${dk8}_compras`)}
+        <span id="fluj_${dk8}_comprasDia" style="font-size:16px;font-weight:700;color:#1a7a1a;font-family:monospace">—</span>
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px">
         <span style="font-size:10px;color:#8a8f98">🏦 Banco de Fichas (al ${pad(dia)}/${pad(m+1)})</span>
@@ -1270,6 +1270,28 @@ function renderFlujoFichas(diaNum) {
     </tr></tbody>
   </table>`;
 
+  // Sector aparte: sumatoria de fichas compradas, día a día, todo el mes
+  h += `<div class="shdr" style="margin-top:16px">🧾 Compras de Fichas — Detalle del Mes</div>
+  <table><thead><tr>
+    <th style="width:60px">Día</th>
+    <th style="width:100px">Fecha</th>
+    <th style="width:150px">Fichas Compradas</th>
+  </tr></thead><tbody>`;
+
+  for (let d=1; d<=diasEnMes; d++) {
+    const dkc = `${y}${pad(m+1)}${pad(d)}`;
+    const dtc = new Date(y, m, d);
+    h += `<tr>
+      <td style="text-align:center">${d}</td>
+      <td style="text-align:center">${DIAS_NOM[dtc.getDay()].slice(0,3)} ${pad(d)}/${pad(m+1)}</td>
+      <td>${inp(`fluj_${dkc}_compras`)}</td>
+    </tr>`;
+  }
+
+  h += `<tr class="rojo"><td colspan="2">Total Compradas del Mes</td>
+    <td class="calc-r" id="fluj_totComprasTabla"></td>
+  </tr></tbody></table>`;
+
   el.innerHTML = h;
   recalcFlujoFichas();
 }
@@ -1336,6 +1358,7 @@ function recalcFlujoFichas() {
     banco = banco + compras - totCargaDia + totRetiroDia;
     if (d === FLUJO_DIA) bancoAlDia = banco;
 
+    sc(`fluj_${dk8}_comprasDia`, compras);
     sc(`fluj_${dk8}_totCarga`, totCargaDia);
     sc(`fluj_${dk8}_totRetiro`, totRetiroDia);
     sc(`fluj_${dk8}_totDescarte`, totDescarteDia);
@@ -1349,6 +1372,7 @@ function recalcFlujoFichas() {
   const setTxt = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = fmt(val) || '0'; };
   setTxt('fluj_bancoDia', bancoAlDia);
   setTxt('fluj_totComprasMes', totComprasMes);
+  setTxt('fluj_totComprasTabla', totComprasMes);
   setTxt('fluj_totCargaMes', totCargaMes);
   setTxt('fluj_totRetiroMes', totRetiroMes);
   setTxt('fluj_totDescarteMes', totDescarteMes);
