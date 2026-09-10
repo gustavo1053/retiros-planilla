@@ -1242,10 +1242,17 @@ function renderFlujoFichas(diaNum) {
 
   PANELES.forEach((p,pi) => {
     FLUJO_TURNOS.forEach((t,ti) => {
+      // El primer turno del mes (día 1, Mañana) es el único con Ficha Inicial
+      // manual (semilla); todos los demás se encadenan solos desde el cierre
+      // del turno anterior (mismo panel).
+      const esPrimerTurnoMes = (dia === 1 && ti === 0);
+      const tdFi = esPrimerTurnoMes
+        ? `<td>${inp(`fluj_${dk8}_p${pi}_${t.k}_fi`)}</td>`
+        : `<td class="calc" id="fluj_${dk8}_p${pi}_${t.k}_fi" title="Se toma automáticamente del cierre del turno anterior"></td>`;
       h += `<tr>
         ${ti===0 ? `<td class="${PC[pi]}" rowspan="3">${p}</td>` : ''}
         <td style="text-align:center">${t.lbl}</td>
-        <td>${inp(`fluj_${dk8}_p${pi}_${t.k}_fi`)}</td>
+        ${tdFi}
         <td>${inp(`fluj_${dk8}_p${pi}_${t.k}_ff`)}</td>
         <td>${inp(`fluj_${dk8}_p${pi}_${t.k}_carga`)}</td>
         <td>${inp(`fluj_${dk8}_p${pi}_${t.k}_retiro`)}</td>
@@ -1299,20 +1306,30 @@ function recalcFlujoFichas() {
   let bancoAlDia = banco;
   let totComprasMes = 0, totCargaMes = 0, totRetiroMes = 0, totDescarteMes = 0;
 
+  // Ficha Final del turno anterior de cada panel (encadena Mañana→Tarde→Noche
+  // y de un día al siguiente); arranca en null porque el día 1 Mañana usa
+  // su propia Ficha Inicial manual (semilla).
+  const prevFF = {};
+
   for (let d=1; d<=diasEnMes; d++) {
     const dk8 = `${y}${pad(m+1)}${pad(d)}`;
     const compras = nv(g(`fluj_${dk8}_compras`));
     let totCargaDia = 0, totRetiroDia = 0, totDescarteDia = 0;
 
     PANELES.forEach((p,pi) => {
-      FLUJO_TURNOS.forEach(t => {
-        const fi = nv(g(`fluj_${dk8}_p${pi}_${t.k}_fi`));
+      FLUJO_TURNOS.forEach((t,ti) => {
+        const esPrimerTurnoMes = (d === 1 && ti === 0);
+        const fi = esPrimerTurnoMes
+          ? nv(g(`fluj_${dk8}_p${pi}_${t.k}_fi`))
+          : (prevFF[pi] || 0);
         const ff = nv(g(`fluj_${dk8}_p${pi}_${t.k}_ff`));
         const carga = nv(g(`fluj_${dk8}_p${pi}_${t.k}_carga`));
         const retiro = nv(g(`fluj_${dk8}_p${pi}_${t.k}_retiro`));
         const resultado = (ff - fi) - carga + retiro;
         totCargaDia += carga; totRetiroDia += retiro; totDescarteDia += resultado;
+        if (!esPrimerTurnoMes) sc(`fluj_${dk8}_p${pi}_${t.k}_fi`, fi);
         sc(`fluj_${dk8}_p${pi}_${t.k}_res`, resultado);
+        prevFF[pi] = ff;
       });
     });
 
