@@ -477,9 +477,9 @@ function onInp(el) {
   const mCg = id.match(/^(sh_carga)_p(\d+)_c(\d+)_d(\d+)$/);
   if (mCg) recalcCarga(parseInt(mCg[3]));
 
-  // Flujo de Fichas: banco, compras del día, o carga/retiro por agente-turno
-  // (Ficha Inicial/Final ya no se cargan acá: vienen de Control de Turnos)
-  if (id === 'fluj_stockIni' || /^fluj_\d{8}_(compras|p\d+_[mtn]_(carga|retiro))$/.test(id)) recalcFlujoFichas();
+  // Flujo de Fichas: banco o compras del día
+  // (Ficha Inicial/Final/Carga/Retiro por agente ya no se cargan acá: vienen de Control de Turnos)
+  if (id === 'fluj_stockIni' || /^fluj_\d{8}_compras$/.test(id)) recalcFlujoFichas();
 
   autoSave();
 }
@@ -1178,7 +1178,7 @@ function renderFlujoFichas(diaNum) {
 
   let h = `<div class="shdr">🔄 Flujo de Fichas — Banco, Carga y Retiro por Agente/Turno — ${MES}</div>`;
   h += `<div style="font-size:10px;color:#555;padding:3px 6px;margin-bottom:6px">
-    🔗 <b>Ficha Inicial</b> y <b>Ficha Final</b> se traen automáticamente de Control de Turnos (fichas / fichas_out), según agente y turno. No se cargan a mano acá.
+    🔗 <b>Ficha Inicial</b>, <b>Ficha Final</b>, <b>Carga</b> y <b>Retiro</b> se traen automáticamente de Control de Turnos (fichas / fichas_out / carga_fichas / retiro), según agente y turno. No se cargan a mano acá.
   </div>`;
 
   // Navegador de días
@@ -1239,8 +1239,8 @@ function renderFlujoFichas(diaNum) {
       <th style="width:70px">Turno</th>
       <th style="width:110px">🔗 Ficha Inicial</th>
       <th style="width:110px">🔗 Ficha Final</th>
-      <th style="width:100px">Carga</th>
-      <th style="width:100px">Retiro</th>
+      <th style="width:100px">🔗 Carga</th>
+      <th style="width:100px">🔗 Retiro</th>
       <th style="width:100px">Resultado</th>
     </tr></thead>
     <tbody>`;
@@ -1252,8 +1252,8 @@ function renderFlujoFichas(diaNum) {
         <td style="text-align:center">${t.lbl}</td>
         <td class="calc" id="fluj_${dk8}_p${pi}_${t.k}_fi" title="Se toma de Control de Turnos"></td>
         <td class="calc" id="fluj_${dk8}_p${pi}_${t.k}_ff" title="Se toma de Control de Turnos"></td>
-        <td>${inp(`fluj_${dk8}_p${pi}_${t.k}_carga`)}</td>
-        <td>${inp(`fluj_${dk8}_p${pi}_${t.k}_retiro`)}</td>
+        <td class="calc" id="fluj_${dk8}_p${pi}_${t.k}_carga" title="Se toma de Control de Turnos"></td>
+        <td class="calc" id="fluj_${dk8}_p${pi}_${t.k}_retiro" title="Se toma de Control de Turnos"></td>
         <td class="calc" id="fluj_${dk8}_p${pi}_${t.k}_res"></td>
       </tr>`;
     });
@@ -1341,12 +1341,14 @@ function recalcFlujoFichas() {
         const rec = turnosCache[p]?.[dkISO]?.[t.tk];
         const fi = numValTurnos(rec?.fichas);
         const ff = numValTurnos(rec?.fichas_out);
-        const carga = nv(g(`fluj_${dk8}_p${pi}_${t.k}_carga`));
-        const retiro = nv(g(`fluj_${dk8}_p${pi}_${t.k}_retiro`));
+        const carga = numValTurnos(rec?.carga_fichas);
+        const retiro = numValTurnos(rec?.retiro);
         const resultado = (ff - fi) - carga + retiro;
         totCargaDia += carga; totRetiroDia += retiro; totDescarteDia += resultado;
         sc(`fluj_${dk8}_p${pi}_${t.k}_fi`, fi);
         sc(`fluj_${dk8}_p${pi}_${t.k}_ff`, ff);
+        sc(`fluj_${dk8}_p${pi}_${t.k}_carga`, carga);
+        sc(`fluj_${dk8}_p${pi}_${t.k}_retiro`, retiro);
         sc(`fluj_${dk8}_p${pi}_${t.k}_res`, resultado);
       });
     });
