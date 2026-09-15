@@ -468,6 +468,8 @@ function onInp(el) {
   // Sistema mensual: mes_202406DD_* → recalc ese día
   const mMes = id.match(/^(mes_\d{8})_/);
   if (mMes) { recalcDiaMes(mMes[1]); }
+  // Pagos Fichas del día alimenta Compras de Flujo de Fichas (1.600.000$ = 10.000.000 fichas)
+  if (/^mes_\d{8}_pagF$/.test(id) && typeof recalcFlujoFichas === 'function') recalcFlujoFichas();
 
   // Sueldo: sh_su1_... → recalc ese sueldo
   const mSu = id.match(/^(sh_su\d)_/);
@@ -477,9 +479,9 @@ function onInp(el) {
   const mCg = id.match(/^(sh_carga)_p(\d+)_c(\d+)_d(\d+)$/);
   if (mCg) recalcCarga(parseInt(mCg[3]));
 
-  // Flujo de Fichas: banco o compras del día
-  // (Ficha Inicial/Final/Carga/Retiro por agente ya no se cargan acá: vienen de Control de Turnos)
-  if (id === 'fluj_stockIni' || /^fluj_\d{8}_compras$/.test(id)) recalcFlujoFichas();
+  // Flujo de Fichas: solo el Stock Inicial del Banco se carga a mano
+  // (Ficha Inicial/Final/Carga/Retiro vienen de Control de Turnos; Compras de Pagos Fichas en Mensual)
+  if (id === 'fluj_stockIni') recalcFlujoFichas();
 
   autoSave();
 }
@@ -1178,7 +1180,7 @@ function renderFlujoFichas(diaNum) {
 
   let h = `<div class="shdr">🔄 Flujo de Fichas — Banco, Carga y Retiro por Agente/Turno — ${MES}</div>`;
   h += `<div style="font-size:10px;color:#555;padding:3px 6px;margin-bottom:6px">
-    🔗 <b>Ficha Inicial</b>, <b>Ficha Final</b>, <b>Carga</b> y <b>Retiro</b> se traen automáticamente de Control de Turnos (fichas / fichas_out / carga_fichas / retiro), según agente y turno. No se cargan a mano acá.
+    🔗 <b>Ficha Inicial</b>, <b>Ficha Final</b>, <b>Carga</b> y <b>Retiro</b> se traen automáticamente de Control de Turnos (fichas / fichas_out / carga_fichas / retiro), según agente y turno. <b>Compras</b> se calcula solo desde "Pagos Fichas" de la solapa Mensual (1.600.000$ = 10.000.000 fichas). Nada de esto se carga a mano acá.
   </div>`;
 
   // Navegador de días
@@ -1200,8 +1202,8 @@ function renderFlujoFichas(diaNum) {
         ${inp('fluj_stockIni')}
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px;border-right:1px solid #e8e8e8">
-        <span style="font-size:10px;color:#8a8f98">Compras del día</span>
-        ${inp(`fluj_${dk8}_compras`)}
+        <span style="font-size:10px;color:#8a8f98">🔗 Compras del día (Pagos Fichas × 6.25)</span>
+        <span id="fluj_${dk8}_comprasDia" style="font-size:16px;font-weight:700;color:#1a7a1a;font-family:monospace">—</span>
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px">
         <span style="font-size:10px;color:#8a8f98">🏦 Banco de Fichas (al ${pad(dia)}/${pad(m+1)})</span>
@@ -1330,10 +1332,13 @@ function recalcFlujoFichas() {
   // ya cacheado en window._turnosDescartesCache por panel/fecha/turno.
   const turnosCache = window._turnosDescartesCache || {};
 
+  const FICHAS_POR_PESO = 10000000 / 1600000; // 1.600.000$ Pagos Fichas = 10.000.000 fichas
+
   for (let d=1; d<=diasEnMes; d++) {
     const dk8 = `${y}${pad(m+1)}${pad(d)}`;
     const dkISO = `${y}-${pad(m+1)}-${pad(d)}`;
-    const compras = nv(g(`fluj_${dk8}_compras`));
+    const pagF = nv(g(`mes_${dk8}_pagF`));
+    const compras = pagF * FICHAS_POR_PESO;
     let totCargaDia = 0, totRetiroDia = 0, totDescarteDia = 0;
 
     PANELES.forEach((p,pi) => {
@@ -1356,6 +1361,7 @@ function recalcFlujoFichas() {
     banco = banco + compras - totCargaDia + totRetiroDia;
     if (d === FLUJO_DIA) bancoAlDia = banco;
 
+    sc(`fluj_${dk8}_comprasDia`, compras);
     sc(`fluj_${dk8}_comprasList`, compras);
     sc(`fluj_${dk8}_totCarga`, totCargaDia);
     sc(`fluj_${dk8}_totRetiro`, totRetiroDia);
