@@ -477,8 +477,9 @@ function onInp(el) {
   const mCg = id.match(/^(sh_carga)_p(\d+)_c(\d+)_d(\d+)$/);
   if (mCg) recalcCarga(parseInt(mCg[3]));
 
-  // Flujo de Fichas: banco, compras del día, o carga/retiro/ficha inicial/final por agente-turno
-  if (id === 'fluj_stockIni' || /^fluj_\d{8}_(compras|p\d+_[mtn]_(fi|ff|carga|retiro))$/.test(id)) recalcFlujoFichas();
+  // Flujo de Fichas: banco, compras del día, o carga/retiro por agente-turno
+  // (Ficha Inicial/Final ya no se cargan acá: vienen de Control de Turnos)
+  if (id === 'fluj_stockIni' || /^fluj_\d{8}_(compras|p\d+_[mtn]_(carga|retiro))$/.test(id)) recalcFlujoFichas();
 
   autoSave();
 }
@@ -1028,6 +1029,7 @@ function iniciarListenersResumenNuevo(mes) {
     });
     window._turnosDescartesCache = cache;
     actualizarResumenNuevoLive();
+    if (typeof recalcFlujoFichas === 'function') recalcFlujoFichas();
   }, err => console.warn('Listener turnosData:', err));
 
   window._resumenLiveUnsubs = [unsub1, unsub2, unsub3];
@@ -1152,7 +1154,7 @@ async function renderComparar() {
 // Ficha Final; el Resultado = (Final - Inicial) - Carga + Retiro es lo
 // consumido en ese turno. Es un tablero independiente del descarte manual
 // de la solapa Mensual (no se tocan ni se cruzan entre sí).
-const FLUJO_TURNOS = [{k:'m',lbl:'Mañana'},{k:'t',lbl:'Tarde'},{k:'n',lbl:'Noche'}];
+const FLUJO_TURNOS = [{k:'m',tk:'manana',lbl:'Mañana'},{k:'t',tk:'tarde',lbl:'Tarde'},{k:'n',tk:'noche',lbl:'Noche'}];
 
 function renderFlujoFichas(diaNum) {
   const el = document.getElementById('sh_flujo');
@@ -1175,6 +1177,9 @@ function renderFlujoFichas(diaNum) {
   const dk8 = `${y}${pad(m+1)}${pad(dia)}`;
 
   let h = `<div class="shdr">🔄 Flujo de Fichas — Banco, Carga y Retiro por Agente/Turno — ${MES}</div>`;
+  h += `<div style="font-size:10px;color:#555;padding:3px 6px;margin-bottom:6px">
+    🔗 <b>Ficha Inicial</b> y <b>Ficha Final</b> se traen automáticamente de Control de Turnos (fichas / fichas_out), según agente y turno. No se cargan a mano acá.
+  </div>`;
 
   // Navegador de días
   h += `<div style="display:flex;align-items:center;gap:10px;padding:10px 0 12px;border-bottom:1px solid #e5e7eb;margin-bottom:12px;flex-wrap:wrap">
@@ -1232,8 +1237,8 @@ function renderFlujoFichas(diaNum) {
     <thead><tr>
       <th style="width:90px">Panel</th>
       <th style="width:70px">Turno</th>
-      <th style="width:110px">Ficha Inicial</th>
-      <th style="width:110px">Ficha Final</th>
+      <th style="width:110px">🔗 Ficha Inicial</th>
+      <th style="width:110px">🔗 Ficha Final</th>
       <th style="width:100px">Carga</th>
       <th style="width:100px">Retiro</th>
       <th style="width:100px">Resultado</th>
@@ -1242,18 +1247,11 @@ function renderFlujoFichas(diaNum) {
 
   PANELES.forEach((p,pi) => {
     FLUJO_TURNOS.forEach((t,ti) => {
-      // El primer turno del mes (día 1, Mañana) es el único con Ficha Inicial
-      // manual (semilla); todos los demás se encadenan solos desde el cierre
-      // del turno anterior (mismo panel).
-      const esPrimerTurnoMes = (dia === 1 && ti === 0);
-      const tdFi = esPrimerTurnoMes
-        ? `<td>${inp(`fluj_${dk8}_p${pi}_${t.k}_fi`)}</td>`
-        : `<td class="calc" id="fluj_${dk8}_p${pi}_${t.k}_fi" title="Se toma automáticamente del cierre del turno anterior"></td>`;
       h += `<tr>
         ${ti===0 ? `<td class="${PC[pi]}" rowspan="3">${p}</td>` : ''}
         <td style="text-align:center">${t.lbl}</td>
-        ${tdFi}
-        <td>${inp(`fluj_${dk8}_p${pi}_${t.k}_ff`)}</td>
+        <td class="calc" id="fluj_${dk8}_p${pi}_${t.k}_fi" title="Se toma de Control de Turnos"></td>
+        <td class="calc" id="fluj_${dk8}_p${pi}_${t.k}_ff" title="Se toma de Control de Turnos"></td>
         <td>${inp(`fluj_${dk8}_p${pi}_${t.k}_carga`)}</td>
         <td>${inp(`fluj_${dk8}_p${pi}_${t.k}_retiro`)}</td>
         <td class="calc" id="fluj_${dk8}_p${pi}_${t.k}_res"></td>
@@ -1328,30 +1326,28 @@ function recalcFlujoFichas() {
   let bancoAlDia = banco;
   let totComprasMes = 0, totCargaMes = 0, totRetiroMes = 0, totDescarteMes = 0;
 
-  // Ficha Final del turno anterior de cada panel (encadena Mañana→Tarde→Noche
-  // y de un día al siguiente); arranca en null porque el día 1 Mañana usa
-  // su propia Ficha Inicial manual (semilla).
-  const prevFF = {};
+  // Ficha Inicial y Ficha Final se leen de Control de Turnos (turnosData),
+  // ya cacheado en window._turnosDescartesCache por panel/fecha/turno.
+  const turnosCache = window._turnosDescartesCache || {};
 
   for (let d=1; d<=diasEnMes; d++) {
     const dk8 = `${y}${pad(m+1)}${pad(d)}`;
+    const dkISO = `${y}-${pad(m+1)}-${pad(d)}`;
     const compras = nv(g(`fluj_${dk8}_compras`));
     let totCargaDia = 0, totRetiroDia = 0, totDescarteDia = 0;
 
     PANELES.forEach((p,pi) => {
-      FLUJO_TURNOS.forEach((t,ti) => {
-        const esPrimerTurnoMes = (d === 1 && ti === 0);
-        const fi = esPrimerTurnoMes
-          ? nv(g(`fluj_${dk8}_p${pi}_${t.k}_fi`))
-          : (prevFF[pi] || 0);
-        const ff = nv(g(`fluj_${dk8}_p${pi}_${t.k}_ff`));
+      FLUJO_TURNOS.forEach(t => {
+        const rec = turnosCache[p]?.[dkISO]?.[t.tk];
+        const fi = numValTurnos(rec?.fichas);
+        const ff = numValTurnos(rec?.fichas_out);
         const carga = nv(g(`fluj_${dk8}_p${pi}_${t.k}_carga`));
         const retiro = nv(g(`fluj_${dk8}_p${pi}_${t.k}_retiro`));
         const resultado = (ff - fi) - carga + retiro;
         totCargaDia += carga; totRetiroDia += retiro; totDescarteDia += resultado;
-        if (!esPrimerTurnoMes) sc(`fluj_${dk8}_p${pi}_${t.k}_fi`, fi);
+        sc(`fluj_${dk8}_p${pi}_${t.k}_fi`, fi);
+        sc(`fluj_${dk8}_p${pi}_${t.k}_ff`, ff);
         sc(`fluj_${dk8}_p${pi}_${t.k}_res`, resultado);
-        prevFF[pi] = ff;
       });
     });
 
