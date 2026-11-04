@@ -408,6 +408,7 @@ function finInfo() {
 }
 
 function renderFinanciera(diaNum) {
+  finCargarFx();
   const el = document.getElementById('sh_fin');
   if (!el) return;
   if (diaNum !== undefined) FIN_DIA = diaNum;
@@ -426,6 +427,12 @@ function renderFinanciera(diaNum) {
     <button class="arr-btn" onclick="renderFinanciera(FIN_DIA+1)" style="width:32px;height:32px;font-size:18px" title="Día siguiente">&#8594;</button>
     <div style="margin-left:8px;font-size:14px;font-weight:700;color:#1f3864">${DIAS_NOM[dt.getDay()]} ${pad(FIN_DIA)}/${pad(m+1)}/${y}</div>
   </div>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;margin-bottom:8px">
+    <span>💵 Dólar oficial Banco Nación (compra) del día anterior:</span>
+    <b id="fin_fx_val" style="font-family:monospace">…</b>
+    <span id="fin_fx_fecha" style="color:#888"></span>
+    <span style="color:#888">| Manual (opcional):</span>${inp(`fin_${k}_fx`, '', 'auto')}
+  </div>
   `;
   FIN_TURNOS.forEach(t => {
     h += `<div class="shdr" style="margin-top:10px">${t.ic} ${t.lbl}</div>
@@ -434,14 +441,44 @@ function renderFinanciera(diaNum) {
       h += `<tr><td class="${PC[pi]}">${p}</td><td>${inp(`fin_${k}_p${pi}_${t.k}_a`)}</td><td>${inp(`fin_${k}_p${pi}_${t.k}_b`)}</td><td class="calc" id="fin_${k}_p${pi}_${t.k}_c"></td></tr>`;
     });
     h += `<tr class="rojo"><td>TOTAL ${t.lbl.toUpperCase()}</td><td class="calc-r" id="fin_tot_${t.k}_a"></td><td class="calc-r" id="fin_tot_${t.k}_b"></td><td class="calc-r" id="fin_tot_${t.k}_c"></td></tr>
+    <tr><td style="font-size:10px">En USD</td><td id="fin_usd_${t.k}" style="text-align:center;font-weight:700;color:#1f3864"></td><td colspan="2"></td></tr>
     <tr><td style="font-size:10px">Control (Fin.+Emi. − Descarte)</td><td colspan="3" id="fin_chk_${t.k}" style="text-align:center;font-weight:700"></td></tr></tbody></table>`;
   });
   h += `<table style="margin-top:10px"><tbody><tr class="rojo"><td>TOTAL DEL DÍA</td><td class="calc-r" id="fin_tot_a"></td><td class="calc-r" id="fin_tot_b"></td><td class="calc-r" id="fin_tot_c"></td></tr>
+    <tr><td style="font-size:10px">En USD</td><td id="fin_usd_dia" style="text-align:center;font-weight:700;color:#1f3864"></td><td colspan="2"></td></tr>
     <tr><td style="font-size:10px">Control (Fin.+Emi. − Descarte)</td><td colspan="3" id="fin_chk_dia" style="text-align:center;font-weight:700"></td></tr>
     <tr class="rojo"><td>TOTAL DEL MES</td><td class="calc-r" id="fin_mes_a"></td><td class="calc-r" id="fin_mes_b"></td><td class="calc-r" id="fin_mes_c"></td></tr>
+    <tr><td style="font-size:10px">En USD</td><td id="fin_usd_mes" style="text-align:center;font-weight:700;color:#1f3864"></td><td colspan="2"></td></tr>
     <tr><td style="font-size:10px">Control (Fin.+Emi. − Descarte)</td><td colspan="3" id="fin_chk_mes" style="text-align:center;font-weight:700"></td></tr></tbody></table>`;
   el.innerHTML = h;
   recalcFinanciera();
+}
+
+// Cotización USD: Bluelytics (fuente "Oficial" = Banco Nación), compra del día anterior
+async function finCargarFx() {
+  if (window._finFx) return;
+  try {
+    const r = await fetch('https://api.bluelytics.com.ar/v2/evolution.json');
+    const arr = await r.json();
+    const map = {};
+    arr.filter(x => x.source === 'Oficial').forEach(x => { map[x.date] = x.value_buy; });
+    window._finFx = { map, fechas: Object.keys(map).sort() };
+  } catch(e) { console.warn('No se pudo traer la cotización', e); window._finFx = { map:{}, fechas:[] }; }
+  if (document.getElementById('sh_fin')?.classList.contains('active')) recalcFinanciera();
+}
+
+// Devuelve {rate, fecha} para un día (yyyymmdd): manual si está cargado, si no la última compra <= día anterior
+function finFx(y, m, d) {
+  const pad = n => String(n).padStart(2,'0');
+  const man = nv(g(`fin_${y}${pad(m+1)}${pad(d)}_fx`));
+  if (man) return { rate: man, fecha: 'manual' };
+  const ant = new Date(y, m, d-1);
+  const lim = `${ant.getFullYear()}-${pad(ant.getMonth()+1)}-${pad(ant.getDate())}`;
+  const fx = window._finFx;
+  if (!fx) return { rate: 0, fecha: '' };
+  let f = null;
+  for (let i = fx.fechas.length-1; i >= 0; i--) { if (fx.fechas[i] <= lim) { f = fx.fechas[i]; break; } }
+  return f ? { rate: fx.map[f], fecha: f } : { rate: 0, fecha: '' };
 }
 
 function finControl(id, a, b, c) {
@@ -453,7 +490,12 @@ function finControl(id, a, b, c) {
 }
 
 function recalcFinanciera() {
-  const { k } = finInfo();
+  const { k, y: yy, m: mm } = finInfo();
+  const fxD = finFx(yy, mm, FIN_DIA);
+  const setT = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  const usd = (v, r) => r ? 'US$ ' + (v / r).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2}) : 'sin cotización';
+  setT('fin_fx_val', fxD.rate ? '$' + fxD.rate.toLocaleString('es-AR') : 'sin dato');
+  setT('fin_fx_fecha', fxD.fecha ? `(${fxD.fecha})` : '');
   const day = {a:0, b:0, c:0};
   FIN_TURNOS.forEach(t => {
     const tot = {a:0, b:0, c:0};
@@ -471,15 +513,18 @@ function recalcFinanciera() {
       if (e) e.textContent = fmt(tot[c]);
     });
     finControl(`fin_chk_${t.k}`, tot.a, tot.b, tot.c);
+    setT(`fin_usd_${t.k}`, usd(tot.a, fxD.rate));
   });
   ['a','b','c'].forEach(c => {
     const e = document.getElementById('fin_tot_'+c);
     if (e) e.textContent = fmt(day[c]);
   });
   finControl('fin_chk_dia', day.a, day.b, day.c);
+  setT('fin_usd_dia', usd(day.a, fxD.rate));
   // Total del mes: suma de todos los días y turnos
   const { y, m, diasEnMes, pad } = finInfo();
   const mes = {a:0, b:0, c:0};
+  let mesUsd = 0, sinFx = false;
   for (let d=1; d<=diasEnMes; d++) {
     const kd = `${y}${pad(m+1)}${pad(d)}`;
     PANELES.forEach((p,pi) => FIN_TURNOS.forEach(t => {
@@ -487,12 +532,16 @@ function recalcFinanciera() {
       mes.b += nv(g(`fin_${kd}_p${pi}_${t.k}_b`));
       mes.c += nv(g(`mes_${kd}_p${pi}_${t.k}`));
     }));
+    let fa = 0;
+    PANELES.forEach((p,pi) => FIN_TURNOS.forEach(t => fa += nv(g(`fin_${kd}_p${pi}_${t.k}_a`))));
+    if (fa) { const r = finFx(y, m, d).rate; if (r) mesUsd += fa / r; else sinFx = true; }
   }
   ['a','b','c'].forEach(c => {
     const e = document.getElementById('fin_mes_'+c);
     if (e) e.textContent = fmt(mes[c]);
   });
   finControl('fin_chk_mes', mes.a, mes.b, mes.c);
+  setT('fin_usd_mes', 'US$ ' + mesUsd.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2}) + (sinFx ? ' (faltan cotizaciones)' : ''));
 }
 
 function actualizarFlotante(shId) {
@@ -591,7 +640,7 @@ function onInp(el) {
   // (Ficha Inicial/Final/Carga/Retiro vienen de Control de Turnos; Compras de Pagos Fichas en Mensual)
   if (id === 'fluj_stockIni') recalcFlujoFichas();
 
-  if (/^fin_\d{8}_p\d+_[mtn]_[ab]$/.test(id)) recalcFinanciera();
+  if (/^fin_\d{8}_(p\d+_[mtn]_[ab]|fx)$/.test(id)) recalcFinanciera();
 
   autoSave();
 }
