@@ -433,12 +433,23 @@ function renderFinanciera(diaNum) {
     PANELES.forEach((p,pi) => {
       h += `<tr><td class="${PC[pi]}">${p}</td><td>${inp(`fin_${k}_p${pi}_${t.k}_a`)}</td><td>${inp(`fin_${k}_p${pi}_${t.k}_b`)}</td><td class="calc" id="fin_${k}_p${pi}_${t.k}_c"></td></tr>`;
     });
-    h += `<tr class="rojo"><td>TOTAL ${t.lbl.toUpperCase()}</td><td class="calc-r" id="fin_tot_${t.k}_a"></td><td class="calc-r" id="fin_tot_${t.k}_b"></td><td class="calc-r" id="fin_tot_${t.k}_c"></td></tr></tbody></table>`;
+    h += `<tr class="rojo"><td>TOTAL ${t.lbl.toUpperCase()}</td><td class="calc-r" id="fin_tot_${t.k}_a"></td><td class="calc-r" id="fin_tot_${t.k}_b"></td><td class="calc-r" id="fin_tot_${t.k}_c"></td></tr>
+    <tr><td style="font-size:10px">Control (Fin.+Emi. − Descarte)</td><td colspan="3" id="fin_chk_${t.k}" style="text-align:center;font-weight:700"></td></tr></tbody></table>`;
   });
   h += `<table style="margin-top:10px"><tbody><tr class="rojo"><td>TOTAL DEL DÍA</td><td class="calc-r" id="fin_tot_a"></td><td class="calc-r" id="fin_tot_b"></td><td class="calc-r" id="fin_tot_c"></td></tr>
-    <tr class="rojo"><td>TOTAL DEL MES</td><td class="calc-r" id="fin_mes_a"></td><td class="calc-r" id="fin_mes_b"></td><td class="calc-r" id="fin_mes_c"></td></tr></tbody></table>`;
+    <tr><td style="font-size:10px">Control (Fin.+Emi. − Descarte)</td><td colspan="3" id="fin_chk_dia" style="text-align:center;font-weight:700"></td></tr>
+    <tr class="rojo"><td>TOTAL DEL MES</td><td class="calc-r" id="fin_mes_a"></td><td class="calc-r" id="fin_mes_b"></td><td class="calc-r" id="fin_mes_c"></td></tr>
+    <tr><td style="font-size:10px">Control (Fin.+Emi. − Descarte)</td><td colspan="3" id="fin_chk_mes" style="text-align:center;font-weight:700"></td></tr></tbody></table>`;
   el.innerHTML = h;
   recalcFinanciera();
+}
+
+function finControl(id, a, b, c) {
+  const e = document.getElementById(id);
+  if (!e) return;
+  const diff = a + b - c;
+  e.textContent = Math.abs(diff) < 0.5 ? '✅ Cuadra' : `❌ Diferencia ${diff > 0 ? '+' : '−'}${fmt(Math.abs(diff))}`;
+  e.style.color = Math.abs(diff) < 0.5 ? '#1a7a1a' : '#c00000';
 }
 
 function recalcFinanciera() {
@@ -459,11 +470,13 @@ function recalcFinanciera() {
       const e = document.getElementById(`fin_tot_${t.k}_${c}`);
       if (e) e.textContent = fmt(tot[c]);
     });
+    finControl(`fin_chk_${t.k}`, tot.a, tot.b, tot.c);
   });
   ['a','b','c'].forEach(c => {
     const e = document.getElementById('fin_tot_'+c);
     if (e) e.textContent = fmt(day[c]);
   });
+  finControl('fin_chk_dia', day.a, day.b, day.c);
   // Total del mes: suma de todos los días y turnos
   const { y, m, diasEnMes, pad } = finInfo();
   const mes = {a:0, b:0, c:0};
@@ -479,6 +492,7 @@ function recalcFinanciera() {
     const e = document.getElementById('fin_mes_'+c);
     if (e) e.textContent = fmt(mes[c]);
   });
+  finControl('fin_chk_mes', mes.a, mes.b, mes.c);
 }
 
 function actualizarFlotante(shId) {
