@@ -435,7 +435,8 @@ function renderFinanciera(diaNum) {
     });
     h += `<tr class="rojo"><td>TOTAL ${t.lbl.toUpperCase()}</td><td class="calc-r" id="fin_tot_${t.k}_a"></td><td class="calc-r" id="fin_tot_${t.k}_b"></td><td class="calc-r" id="fin_tot_${t.k}_c"></td></tr></tbody></table>`;
   });
-  h += `<table style="margin-top:10px"><tbody><tr class="rojo"><td>TOTAL DEL DÍA</td><td class="calc-r" id="fin_tot_a"></td><td class="calc-r" id="fin_tot_b"></td><td class="calc-r" id="fin_tot_c"></td></tr></tbody></table>`;
+  h += `<table style="margin-top:10px"><tbody><tr class="rojo"><td>TOTAL DEL DÍA</td><td class="calc-r" id="fin_tot_a"></td><td class="calc-r" id="fin_tot_b"></td><td class="calc-r" id="fin_tot_c"></td></tr>
+    <tr class="rojo"><td>TOTAL DEL MES</td><td class="calc-r" id="fin_mes_a"></td><td class="calc-r" id="fin_mes_b"></td><td class="calc-r" id="fin_mes_c"></td></tr></tbody></table>`;
   el.innerHTML = h;
   recalcFinanciera();
 }
@@ -462,6 +463,21 @@ function recalcFinanciera() {
   ['a','b','c'].forEach(c => {
     const e = document.getElementById('fin_tot_'+c);
     if (e) e.textContent = fmt(day[c]);
+  });
+  // Total del mes: suma de todos los días y turnos
+  const { y, m, diasEnMes, pad } = finInfo();
+  const mes = {a:0, b:0, c:0};
+  for (let d=1; d<=diasEnMes; d++) {
+    const kd = `${y}${pad(m+1)}${pad(d)}`;
+    PANELES.forEach((p,pi) => FIN_TURNOS.forEach(t => {
+      mes.a += nv(g(`fin_${kd}_p${pi}_${t.k}_a`));
+      mes.b += nv(g(`fin_${kd}_p${pi}_${t.k}_b`));
+      mes.c += nv(g(`mes_${kd}_p${pi}_${t.k}`));
+    }));
+  }
+  ['a','b','c'].forEach(c => {
+    const e = document.getElementById('fin_mes_'+c);
+    if (e) e.textContent = fmt(mes[c]);
   });
 }
 
