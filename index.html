@@ -402,7 +402,7 @@ function renderFinanciera() {
   const diasEnMes = new Date(y, m+1, 0).getDate();
   const pad = n => String(n).padStart(2,'0');
   let h = `<div class="shdr">🏦 Financiera — ${MES}</div>
-    <table><thead><tr><th>Día</th><th>FINANCIERA -50K</th><th>EMILIANO +50K</th><th>DESCARTE X AGENTE</th></tr></thead><tbody>`;
+    <table><thead><tr><th>Día</th><th>FINANCIERA +50K</th><th>EMILIANO -50K</th><th>DESCARTE X AGENTE</th></tr></thead><tbody>`;
   for (let d=1; d<=diasEnMes; d++) {
     const dn = DIAS_CORTO[(new Date(y, m, d).getDay()+6)%7];
     h += `<tr><td>${dn} ${pad(d)}/${pad(m+1)}</td>`;
