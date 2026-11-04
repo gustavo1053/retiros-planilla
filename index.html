@@ -396,8 +396,37 @@ function showSheet(id, el) {
 function renderFinanciera() {
   const el = document.getElementById('sh_fin');
   if (!el) return;
-  el.innerHTML = `<div class="shdr">🏦 Financiera — ${MES}</div>
-    <div style="font-size:12px;color:#555;padding:12px 6px">Solapa lista. Contenido pendiente de definir.</div>`;
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const [mesNom, anio] = MES.split(' ');
+  const m = meses.indexOf(mesNom), y = parseInt(anio);
+  const diasEnMes = new Date(y, m+1, 0).getDate();
+  const pad = n => String(n).padStart(2,'0');
+  let h = `<div class="shdr">🏦 Financiera — ${MES}</div>
+    <table><thead><tr><th>Día</th><th>FINANCIERA -50K</th><th>EMILIANO +50K</th><th>DESCARTE X AGENTE</th></tr></thead><tbody>`;
+  for (let d=1; d<=diasEnMes; d++) {
+    const dn = DIAS_CORTO[(new Date(y, m, d).getDay()+6)%7];
+    h += `<tr><td>${dn} ${pad(d)}/${pad(m+1)}</td>`;
+    ['a','b','c'].forEach(c => h += `<td>${inp(`fin_${y}${pad(m+1)}${pad(d)}_${c}`)}</td>`);
+    h += `</tr>`;
+  }
+  h += `<tr class="rojo"><td>TOTAL</td>`;
+  ['a','b','c'].forEach(c => h += `<td class="calc-r" id="fin_tot_${c}"></td>`);
+  h += `</tr></tbody></table>`;
+  el.innerHTML = h;
+  recalcFinanciera();
+}
+
+function recalcFinanciera() {
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const [mesNom, anio] = MES.split(' ');
+  const m = meses.indexOf(mesNom), y = parseInt(anio);
+  const diasEnMes = new Date(y, m+1, 0).getDate();
+  ['a','b','c'].forEach(c => {
+    let t = 0;
+    for (let d=1; d<=diasEnMes; d++) t += nv(g(`fin_${y}${String(m+1).padStart(2,'0')}${String(d).padStart(2,'0')}_${c}`));
+    const e = document.getElementById('fin_tot_'+c);
+    if (e) e.textContent = fmt(t);
+  });
 }
 
 function actualizarFlotante(shId) {
@@ -495,6 +524,8 @@ function onInp(el) {
   // Flujo de Fichas: solo el Stock Inicial del Banco se carga a mano
   // (Ficha Inicial/Final/Carga/Retiro vienen de Control de Turnos; Compras de Pagos Fichas en Mensual)
   if (id === 'fluj_stockIni') recalcFlujoFichas();
+
+  if (/^fin_\d{8}_[abc]$/.test(id)) recalcFinanciera();
 
   autoSave();
 }
