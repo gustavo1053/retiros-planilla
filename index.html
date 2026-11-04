@@ -394,6 +394,7 @@ function showSheet(id, el) {
 
 // ── FINANCIERA ──────────────────────────────────────────────
 let FIN_DIA = 1;
+const FIN_TURNOS = [{k:'m',lbl:'Mañana',ic:'🌅'},{k:'t',lbl:'Tarde',ic:'☀️'},{k:'n',lbl:'Noche',ic:'🌙'}];
 const FIN_MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 function finInfo() {
@@ -425,29 +426,42 @@ function renderFinanciera(diaNum) {
     <button class="arr-btn" onclick="renderFinanciera(FIN_DIA+1)" style="width:32px;height:32px;font-size:18px" title="Día siguiente">&#8594;</button>
     <div style="margin-left:8px;font-size:14px;font-weight:700;color:#1f3864">${DIAS_NOM[dt.getDay()]} ${pad(FIN_DIA)}/${pad(m+1)}/${y}</div>
   </div>
-  <table><thead><tr><th>Agente</th><th>FINANCIERA +50K</th><th>EMILIANO -50K</th><th>DESCARTE X AGENTE</th></tr></thead><tbody>`;
-  PANELES.forEach((p,pi) => {
-    h += `<tr><td class="${PC[pi]}">${p}</td><td>${inp(`fin_${k}_p${pi}_a`)}</td><td>${inp(`fin_${k}_p${pi}_b`)}</td><td class="calc" id="fin_${k}_p${pi}_c"></td></tr>`;
+  `;
+  FIN_TURNOS.forEach(t => {
+    h += `<div class="shdr" style="margin-top:10px">${t.ic} ${t.lbl}</div>
+    <table><thead><tr><th>Agente</th><th>FINANCIERA +50K</th><th>EMILIANO -50K</th><th>DESCARTE X AGENTE</th></tr></thead><tbody>`;
+    PANELES.forEach((p,pi) => {
+      h += `<tr><td class="${PC[pi]}">${p}</td><td>${inp(`fin_${k}_p${pi}_${t.k}_a`)}</td><td>${inp(`fin_${k}_p${pi}_${t.k}_b`)}</td><td class="calc" id="fin_${k}_p${pi}_${t.k}_c"></td></tr>`;
+    });
+    h += `<tr class="rojo"><td>TOTAL ${t.lbl.toUpperCase()}</td><td class="calc-r" id="fin_tot_${t.k}_a"></td><td class="calc-r" id="fin_tot_${t.k}_b"></td><td class="calc-r" id="fin_tot_${t.k}_c"></td></tr></tbody></table>`;
   });
-  h += `<tr class="rojo"><td>TOTAL</td><td class="calc-r" id="fin_tot_a"></td><td class="calc-r" id="fin_tot_b"></td><td class="calc-r" id="fin_tot_c"></td></tr></tbody></table>`;
+  h += `<table style="margin-top:10px"><tbody><tr class="rojo"><td>TOTAL DEL DÍA</td><td class="calc-r" id="fin_tot_a"></td><td class="calc-r" id="fin_tot_b"></td><td class="calc-r" id="fin_tot_c"></td></tr></tbody></table>`;
   el.innerHTML = h;
   recalcFinanciera();
 }
 
 function recalcFinanciera() {
   const { k } = finInfo();
-  const tot = {a:0, b:0, c:0};
-  PANELES.forEach((p,pi) => {
-    tot.a += nv(g(`fin_${k}_p${pi}_a`));
-    tot.b += nv(g(`fin_${k}_p${pi}_b`));
-    // Descarte x agente: linkeado de la solapa Mensual (mañana + tarde + noche del día)
-    const desc = ['m','t','n'].reduce((a,t) => a + nv(g(`mes_${k}_p${pi}_${t}`)), 0);
-    tot.c += desc;
-    sc(`fin_${k}_p${pi}_c`, desc);
+  const day = {a:0, b:0, c:0};
+  FIN_TURNOS.forEach(t => {
+    const tot = {a:0, b:0, c:0};
+    PANELES.forEach((p,pi) => {
+      tot.a += nv(g(`fin_${k}_p${pi}_${t.k}_a`));
+      tot.b += nv(g(`fin_${k}_p${pi}_${t.k}_b`));
+      // Descarte x agente: linkeado de la solapa Mensual (mismo agente y turno)
+      const desc = nv(g(`mes_${k}_p${pi}_${t.k}`));
+      tot.c += desc;
+      sc(`fin_${k}_p${pi}_${t.k}_c`, desc);
+    });
+    ['a','b','c'].forEach(c => {
+      day[c] += tot[c];
+      const e = document.getElementById(`fin_tot_${t.k}_${c}`);
+      if (e) e.textContent = fmt(tot[c]);
+    });
   });
   ['a','b','c'].forEach(c => {
     const e = document.getElementById('fin_tot_'+c);
-    if (e) e.textContent = fmt(tot[c]);
+    if (e) e.textContent = fmt(day[c]);
   });
 }
 
@@ -547,7 +561,7 @@ function onInp(el) {
   // (Ficha Inicial/Final/Carga/Retiro vienen de Control de Turnos; Compras de Pagos Fichas en Mensual)
   if (id === 'fluj_stockIni') recalcFlujoFichas();
 
-  if (/^fin_\d{8}_p\d+_[ab]$/.test(id)) recalcFinanciera();
+  if (/^fin_\d{8}_p\d+_[mtn]_[ab]$/.test(id)) recalcFinanciera();
 
   autoSave();
 }
