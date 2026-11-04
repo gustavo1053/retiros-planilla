@@ -406,8 +406,8 @@ function renderFinanciera() {
   for (let d=1; d<=diasEnMes; d++) {
     const dn = DIAS_CORTO[(new Date(y, m, d).getDay()+6)%7];
     h += `<tr><td>${dn} ${pad(d)}/${pad(m+1)}</td>`;
-    ['a','b','c'].forEach(c => h += `<td>${inp(`fin_${y}${pad(m+1)}${pad(d)}_${c}`)}</td>`);
-    h += `</tr>`;
+    ['a','b'].forEach(c => h += `<td>${inp(`fin_${y}${pad(m+1)}${pad(d)}_${c}`)}</td>`);
+    h += `<td class="calc" id="fin_${y}${pad(m+1)}${pad(d)}_c"></td></tr>`;
   }
   h += `<tr class="rojo"><td>TOTAL</td>`;
   ['a','b','c'].forEach(c => h += `<td class="calc-r" id="fin_tot_${c}"></td>`);
@@ -421,11 +421,21 @@ function recalcFinanciera() {
   const [mesNom, anio] = MES.split(' ');
   const m = meses.indexOf(mesNom), y = parseInt(anio);
   const diasEnMes = new Date(y, m+1, 0).getDate();
+  const pad = n => String(n).padStart(2,'0');
+  const tot = {a:0, b:0, c:0};
+  for (let d=1; d<=diasEnMes; d++) {
+    const k = `${y}${pad(m+1)}${pad(d)}`;
+    tot.a += nv(g(`fin_${k}_a`));
+    tot.b += nv(g(`fin_${k}_b`));
+    // Descarte x agente: linkeado de la solapa Mensual (suma de todos los paneles/turnos del día)
+    let desc = 0;
+    PANELES.forEach((p,pi) => ['m','t','n'].forEach(t => desc += nv(g(`mes_${k}_p${pi}_${t}`))));
+    tot.c += desc;
+    sc(`fin_${k}_c`, desc);
+  }
   ['a','b','c'].forEach(c => {
-    let t = 0;
-    for (let d=1; d<=diasEnMes; d++) t += nv(g(`fin_${y}${String(m+1).padStart(2,'0')}${String(d).padStart(2,'0')}_${c}`));
     const e = document.getElementById('fin_tot_'+c);
-    if (e) e.textContent = fmt(t);
+    if (e) e.textContent = fmt(tot[c]);
   });
 }
 
