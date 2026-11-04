@@ -394,6 +394,7 @@ function showSheet(id, el) {
 
 // ── FINANCIERA ──────────────────────────────────────────────
 let FIN_DIA = 1;
+const FIN_FEE = 0.06; // comisión de conversión pesos → dólares
 const FIN_TURNOS = [{k:'m',lbl:'Mañana',ic:'🌅'},{k:'t',lbl:'Tarde',ic:'☀️'},{k:'n',lbl:'Noche',ic:'🌙'}];
 const FIN_MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -445,7 +446,9 @@ function renderFinanciera(diaNum) {
     <tr><td style="font-size:10px">Control (Fin.+Emi. − Descarte)</td><td colspan="3" id="fin_chk_${t.k}" style="text-align:center;font-weight:700"></td></tr></tbody></table>`;
   });
   h += `<table style="margin-top:10px"><tbody><tr class="rojo"><td>TOTAL DEL DÍA</td><td class="calc-r" id="fin_tot_a"></td><td class="calc-r" id="fin_tot_b"></td><td class="calc-r" id="fin_tot_c"></td></tr>
-    <tr><td style="font-size:10px">En USD</td><td id="fin_usd_dia" style="text-align:center;font-weight:700;color:#1f3864"></td><td colspan="2"></td></tr>
+    <tr><td style="font-size:10px">En USD (bruto)</td><td id="fin_usd_dia" style="text-align:center;font-weight:700;color:#1f3864"></td><td colspan="2"></td></tr>
+    <tr><td style="font-size:10px">− 6% conversión</td><td id="fin_usd_fee" style="text-align:center;font-weight:700;color:#c00000"></td><td colspan="2"></td></tr>
+    <tr><td style="font-size:10px">USD neto del día (registrado)</td><td id="fin_usd_neto" style="text-align:center;font-weight:700;color:#1a7a1a"></td><td colspan="2"></td></tr>
     <tr><td style="font-size:10px">Control (Fin.+Emi. − Descarte)</td><td colspan="3" id="fin_chk_dia" style="text-align:center;font-weight:700"></td></tr>
     <tr class="rojo"><td>TOTAL DEL MES</td><td class="calc-r" id="fin_mes_a"></td><td class="calc-r" id="fin_mes_b"></td><td class="calc-r" id="fin_mes_c"></td></tr>
     <tr><td style="font-size:10px">En USD</td><td id="fin_usd_mes" style="text-align:center;font-weight:700;color:#1f3864"></td><td colspan="2"></td></tr>
@@ -532,6 +535,17 @@ function recalcFinanciera() {
   });
   finControl('fin_chk_dia', day.a, day.b, day.c);
   setT('fin_usd_dia', usd(day.a, fxD.rate));
+  // 6% de conversión pesos→dólares: se descuenta del total del día y se registra el neto
+  const f2 = v => v.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  if (fxD.rate) {
+    const bruto = day.a / fxD.rate, fee = bruto * FIN_FEE, neto = bruto - fee;
+    setT('fin_usd_fee', '− US$ ' + f2(fee));
+    setT('fin_usd_neto', 'US$ ' + f2(neto));
+    const reg = JSON.stringify({ pesos: Math.round(day.a), cotizacion: fxD.rate, bruto: +bruto.toFixed(2), comision: +fee.toFixed(2), neto: +neto.toFixed(2) });
+    if (g(`fin_${k}_usdReg`) !== reg) { s(`fin_${k}_usdReg`, reg); s(`fin_${k}_usdNeto`, neto.toFixed(2)); autoSave(); }
+  } else {
+    setT('fin_usd_fee', 'sin cotización'); setT('fin_usd_neto', 'sin cotización');
+  }
   // Total del mes: suma de todos los días y turnos
   const { y, m, diasEnMes, pad } = finInfo();
   const mes = {a:0, b:0, c:0};
@@ -545,14 +559,14 @@ function recalcFinanciera() {
     }));
     let fa = 0;
     PANELES.forEach((p,pi) => FIN_TURNOS.forEach(t => fa += nv(g(`fin_${kd}_p${pi}_${t.k}_a`))));
-    if (fa) { const r = finFx(y, m, d).rate; if (r) mesUsd += fa / r; else sinFx = true; }
+    if (fa) { const r = finFx(y, m, d).rate; if (r) mesUsd += fa / r * (1 - FIN_FEE); else sinFx = true; }
   }
   ['a','b','c'].forEach(c => {
     const e = document.getElementById('fin_mes_'+c);
     if (e) e.textContent = fmt(mes[c]);
   });
   finControl('fin_chk_mes', mes.a, mes.b, mes.c);
-  setT('fin_usd_mes', 'US$ ' + mesUsd.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2}) + (sinFx ? ' (faltan cotizaciones)' : ''));
+  setT('fin_usd_mes', 'neto US$ ' + mesUsd.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2}) + (sinFx ? ' (faltan cotizaciones)' : ''));
 }
 
 function actualizarFlotante(shId) {
