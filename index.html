@@ -481,6 +481,17 @@ function finFx(y, m, d) {
   return f ? { rate: fx.map[f], fecha: f } : { rate: 0, fecha: '' };
 }
 
+// Descarte de un agente/turno/día: viene de Control de Turnos (turnosData), igual que el
+// resumen "Descarte"; si no hay dato ahí, se usa el descarte cargado en la solapa Mensual.
+const FIN_TK = {m:'manana', t:'tarde', n:'noche'};
+function finDescarte(pi, y, m, d, tk) {
+  const pad = n => String(n).padStart(2,'0');
+  const fecha = `${y}-${pad(m+1)}-${pad(d)}`;
+  const auto = numValTurnos((window._turnosDescartesCache || {})[PANELES[pi]]?.[fecha]?.[FIN_TK[tk]]?.descartes);
+  if (auto) return auto;
+  return nv(g(`mes_${y}${pad(m+1)}${pad(d)}_p${pi}_${tk}`));
+}
+
 function finControl(id, a, b, c) {
   const e = document.getElementById(id);
   if (!e) return;
@@ -503,7 +514,7 @@ function recalcFinanciera() {
       tot.a += nv(g(`fin_${k}_p${pi}_${t.k}_a`));
       tot.b += nv(g(`fin_${k}_p${pi}_${t.k}_b`));
       // Descarte x agente: linkeado de la solapa Mensual (mismo agente y turno)
-      const desc = nv(g(`mes_${k}_p${pi}_${t.k}`));
+      const desc = finDescarte(pi, yy, mm, FIN_DIA, t.k);
       tot.c += desc;
       sc(`fin_${k}_p${pi}_${t.k}_c`, desc);
     });
@@ -530,7 +541,7 @@ function recalcFinanciera() {
     PANELES.forEach((p,pi) => FIN_TURNOS.forEach(t => {
       mes.a += nv(g(`fin_${kd}_p${pi}_${t.k}_a`));
       mes.b += nv(g(`fin_${kd}_p${pi}_${t.k}_b`));
-      mes.c += nv(g(`mes_${kd}_p${pi}_${t.k}`));
+      mes.c += finDescarte(pi, y, m, d, t.k);
     }));
     let fa = 0;
     PANELES.forEach((p,pi) => FIN_TURNOS.forEach(t => fa += nv(g(`fin_${kd}_p${pi}_${t.k}_a`))));
@@ -1191,6 +1202,7 @@ function iniciarListenersResumenNuevo(mes) {
     window._turnosDescartesCache = cache;
     actualizarResumenNuevoLive();
     if (typeof recalcFlujoFichas === 'function') recalcFlujoFichas();
+    if (typeof recalcFinanciera === 'function') recalcFinanciera();
   }, err => console.warn('Listener turnosData:', err));
 
   window._resumenLiveUnsubs = [unsub1, unsub2, unsub3];
