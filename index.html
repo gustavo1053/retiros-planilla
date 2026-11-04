@@ -393,46 +393,58 @@ function showSheet(id, el) {
 }
 
 // ── FINANCIERA ──────────────────────────────────────────────
-function renderFinanciera() {
+let FIN_DIA = 1;
+const FIN_MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function finInfo() {
+  const [mesNom, anio] = MES.split(' ');
+  const m = FIN_MESES.indexOf(mesNom), y = parseInt(anio);
+  const diasEnMes = new Date(y, m+1, 0).getDate();
+  if (FIN_DIA < 1) FIN_DIA = 1;
+  if (FIN_DIA > diasEnMes) FIN_DIA = diasEnMes;
+  const pad = n => String(n).padStart(2,'0');
+  return { m, y, diasEnMes, pad, k: `${y}${pad(m+1)}${pad(FIN_DIA)}` };
+}
+
+function renderFinanciera(diaNum) {
   const el = document.getElementById('sh_fin');
   if (!el) return;
-  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const [mesNom, anio] = MES.split(' ');
-  const m = meses.indexOf(mesNom), y = parseInt(anio);
-  const diasEnMes = new Date(y, m+1, 0).getDate();
-  const pad = n => String(n).padStart(2,'0');
+  if (diaNum !== undefined) FIN_DIA = diaNum;
+  const { m, y, diasEnMes, pad, k } = finInfo();
+  const DIAS_NOM = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const dt = new Date(y, m, FIN_DIA);
   let h = `<div class="shdr">🏦 Financiera — ${MES}</div>
-    <table><thead><tr><th>Día</th><th>FINANCIERA +50K</th><th>EMILIANO -50K</th><th>DESCARTE X AGENTE</th></tr></thead><tbody>`;
-  for (let d=1; d<=diasEnMes; d++) {
-    const dn = DIAS_CORTO[(new Date(y, m, d).getDay()+6)%7];
-    h += `<tr><td>${dn} ${pad(d)}/${pad(m+1)}</td>`;
-    ['a','b'].forEach(c => h += `<td>${inp(`fin_${y}${pad(m+1)}${pad(d)}_${c}`)}</td>`);
-    h += `<td class="calc" id="fin_${y}${pad(m+1)}${pad(d)}_c"></td></tr>`;
-  }
-  h += `<tr class="rojo"><td>TOTAL</td>`;
-  ['a','b','c'].forEach(c => h += `<td class="calc-r" id="fin_tot_${c}"></td>`);
-  h += `</tr></tbody></table>`;
+  <div style="display:flex;align-items:center;gap:10px;padding:10px 0 12px;border-bottom:1px solid #e5e7eb;margin-bottom:12px;flex-wrap:wrap">
+    <button class="arr-btn" onclick="renderFinanciera(FIN_DIA-1)" style="width:32px;height:32px;font-size:18px" title="Día anterior">&#8592;</button>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:12px;color:#888">Día</span>
+      <input type="number" value="${FIN_DIA}" min="1" max="${diasEnMes}" onchange="renderFinanciera(parseInt(this.value)||1)"
+        style="width:55px;text-align:center;font-size:14px;font-weight:600;padding:4px 6px;border:1px solid #bbb;border-radius:6px">
+      <span style="font-size:12px;color:#888">de ${diasEnMes}</span>
+    </div>
+    <button class="arr-btn" onclick="renderFinanciera(FIN_DIA+1)" style="width:32px;height:32px;font-size:18px" title="Día siguiente">&#8594;</button>
+    <div style="margin-left:8px;font-size:14px;font-weight:700;color:#1f3864">${DIAS_NOM[dt.getDay()]} ${pad(FIN_DIA)}/${pad(m+1)}/${y}</div>
+  </div>
+  <table><thead><tr><th>Agente</th><th>FINANCIERA +50K</th><th>EMILIANO -50K</th><th>DESCARTE X AGENTE</th></tr></thead><tbody>`;
+  PANELES.forEach((p,pi) => {
+    h += `<tr><td class="${PC[pi]}">${p}</td><td>${inp(`fin_${k}_p${pi}_a`)}</td><td>${inp(`fin_${k}_p${pi}_b`)}</td><td class="calc" id="fin_${k}_p${pi}_c"></td></tr>`;
+  });
+  h += `<tr class="rojo"><td>TOTAL</td><td class="calc-r" id="fin_tot_a"></td><td class="calc-r" id="fin_tot_b"></td><td class="calc-r" id="fin_tot_c"></td></tr></tbody></table>`;
   el.innerHTML = h;
   recalcFinanciera();
 }
 
 function recalcFinanciera() {
-  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const [mesNom, anio] = MES.split(' ');
-  const m = meses.indexOf(mesNom), y = parseInt(anio);
-  const diasEnMes = new Date(y, m+1, 0).getDate();
-  const pad = n => String(n).padStart(2,'0');
+  const { k } = finInfo();
   const tot = {a:0, b:0, c:0};
-  for (let d=1; d<=diasEnMes; d++) {
-    const k = `${y}${pad(m+1)}${pad(d)}`;
-    tot.a += nv(g(`fin_${k}_a`));
-    tot.b += nv(g(`fin_${k}_b`));
-    // Descarte x agente: linkeado de la solapa Mensual (suma de todos los paneles/turnos del día)
-    let desc = 0;
-    PANELES.forEach((p,pi) => ['m','t','n'].forEach(t => desc += nv(g(`mes_${k}_p${pi}_${t}`))));
+  PANELES.forEach((p,pi) => {
+    tot.a += nv(g(`fin_${k}_p${pi}_a`));
+    tot.b += nv(g(`fin_${k}_p${pi}_b`));
+    // Descarte x agente: linkeado de la solapa Mensual (mañana + tarde + noche del día)
+    const desc = ['m','t','n'].reduce((a,t) => a + nv(g(`mes_${k}_p${pi}_${t}`)), 0);
     tot.c += desc;
-    sc(`fin_${k}_c`, desc);
-  }
+    sc(`fin_${k}_p${pi}_c`, desc);
+  });
   ['a','b','c'].forEach(c => {
     const e = document.getElementById('fin_tot_'+c);
     if (e) e.textContent = fmt(tot[c]);
@@ -535,7 +547,7 @@ function onInp(el) {
   // (Ficha Inicial/Final/Carga/Retiro vienen de Control de Turnos; Compras de Pagos Fichas en Mensual)
   if (id === 'fluj_stockIni') recalcFlujoFichas();
 
-  if (/^fin_\d{8}_[abc]$/.test(id)) recalcFinanciera();
+  if (/^fin_\d{8}_p\d+_[ab]$/.test(id)) recalcFinanciera();
 
   autoSave();
 }
