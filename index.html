@@ -2886,6 +2886,7 @@ async function renderAll(preUltima) {
   const diaSueInicial = (ultima && ultima.mes === MES && ultima.diaSue) ? ultima.diaSue : 1;
   DIA_ACTUAL = diaInicial;
   DIA_SUE = diaSueInicial;
+  FIN_DIA = diaInicial;
   renderMensual(diaInicial);
   renderSueldos(diaSueInicial);
   renderCargas();
@@ -2953,10 +2954,20 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   await cargarStorage();
 
-  // Restaurar el mes/día donde el usuario dejó de trabajar (compartido vía Firebase)
-  const ultimaVistaInit = await cargarUltimaVista();
+  // Arrancar siempre en el mes en curso (y el día de hoy); si el mes en curso
+  // no está en el selector, se restaura la última vista guardada.
+  let ultimaVistaInit = await cargarUltimaVista();
+  const hoy = new Date();
+  const mesNombres = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const mesActual = `${mesNombres[hoy.getMonth()]} ${hoy.getFullYear()}`;
+  const selMes = document.getElementById('mesSelect');
+  const existeActual = Array.from(selMes.options).some(o => o.value === mesActual);
+  if (existeActual) {
+    if (!(ultimaVistaInit && ultimaVistaInit.mes === mesActual)) {
+      ultimaVistaInit = { mes: mesActual, dia: hoy.getDate(), diaSue: hoy.getDate() };
+    }
+  }
   if (ultimaVistaInit && ultimaVistaInit.mes) {
-    const selMes = document.getElementById('mesSelect');
     const existe = Array.from(selMes.options).some(o => o.value === ultimaVistaInit.mes);
     if (existe) {
       selMes.value = ultimaVistaInit.mes;
