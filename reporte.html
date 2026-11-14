@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="theme-color" content="#1f3864">
+<link rel="manifest" href="/manifest.json">
+<title>Reporte de Retiros</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Calibri,Arial,sans-serif;font-size:14px;background:#f0f0f0;color:#000}
+header{background:#1f3864;color:#fff;padding:10px 16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+header h1{font-size:16px}
+header a{color:#fff;font-size:13px}
+main{max-width:1100px;margin:0 auto;padding:14px 16px;display:flex;flex-direction:column;gap:14px}
+.bar{background:#fff;border:1px solid #ccc;border-radius:6px;padding:12px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:#555}
+input[type=date]{font:inherit;padding:6px 8px;border:1px solid #aaa;border-radius:4px}
+button{font:inherit;padding:6px 11px;border:1px solid #aaa;border-radius:4px;background:#fff;cursor:pointer}
+button:hover{border-color:#1f3864}
+button.on{background:#1f3864;color:#fff;border-color:#1f3864}
+.presets{display:flex;flex-wrap:wrap;gap:8px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.tile{background:#fff;border:1px solid #ccc;border-radius:6px;padding:10px;min-width:0}
+.tile.main{background:#d9e1f2}
+.tile span{font-size:12px;color:#555}
+.tile b{display:block;font-size:19px;margin-top:2px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.wrap{overflow-x:auto;background:#fff;border:1px solid #ccc;border-radius:6px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:6px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid #ddd}
+th:first-child,td:first-child{text-align:left}
+th{background:#d9e1f2;font-size:12px}
+tfoot td{font-weight:700;background:#d9e1f2}
+.note{font-size:12px;color:#555}
+#st{font-size:12px;color:#555}
+</style>
+</head>
+<body>
+<header><h1>📊 Reporte de Retiros</h1><a href="/">← Volver a la planilla</a></header>
+<main>
+<div class="bar">
+  <label>Desde<input type="date" id="d1"></label>
+  <label>Hasta<input type="date" id="d2"></label>
+  <div class="presets" id="pre"></div>
+  <span id="st">Cargando…</span>
+</div>
+<div class="tiles" id="tiles"></div>
+<div class="wrap"><table>
+<thead><tr><th>Fecha</th><th>Pago de fichas</th><th>Stock de fichas</th><th>Descarte</th><th>Bonificaciones</th><th>Sueldos</th><th>Gastos Gus</th><th>Subtotal</th></tr></thead>
+<tbody id="tb"></tbody><tfoot id="tf"></tfoot></table></div>
+<p class="note">Datos en vivo de la planilla. Stock de fichas = Pago de fichas × 6,25. Subtotal = Descarte + Bonificaciones + Sueldos + Gastos Gus.</p>
+</main>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, getDocs, query, where, documentId } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+const app = initializeApp({
+  apiKey:"AIzaSyCGRYyo9EmR0NB3TImzZIP4SuDpDwwMgVc",
+  authDomain:"planilla-perdidas---ganancias.firebaseapp.com",
+  projectId:"planilla-perdidas---ganancias",
+  storageBucket:"planilla-perdidas---ganancias.firebasestorage.app",
+  messagingSenderId:"179047310261",
+  appId:"1:179047310261:web:2e5ad044d98751985d2ffc"
+}, 'reporte');
+const db = getFirestore(app);
+const $ = id => document.getElementById(id);
+const fmt = n => Math.round(n).toLocaleString('es-AR');
+const num = v => { const n = parseFloat(String(v||'').replace(/[^0-9.\-]/g,'')); return isNaN(n)?0:n; };
+const pesos = v => num(String(v||'').replace(/\./g,'').replace(',','.'));
+const iso = d => d.toISOString().slice(0,10);
+const TURNOS = ['manana','tarde','noche'];
+const TD = ['AG_18','AG_19','AG_21','AG_22','AG_23','AG_24','AG_25','SIEMPRE_MONO'];
+
+let pagF = {};      // fecha -> pago de fichas (retiros_data, de todos los meses)
+let desc = {};      // fecha -> descarte (turnosData)
+let loaded = false;
+
+async function cargarBase(){
+  const [rd, td] = await Promise.all([
+    getDocs(collection(db,'retiros_data')),
+    getDocs(collection(db,'turnosData'))
+  ]);
+  pagF = {};
+  rd.forEach(s => {
+    if (s.id === 'test') return;
+    let data = {}; try { data = JSON.parse(s.data().data||'{}'); } catch(e){}
+    for (const [k,v] of Object.entries(data)) {
+      const m = k.match(/^mes_(\d{4})(\d\d)(\d\d)_pagF$/);
+      if (m) pagF[`${m[1]}-${m[2]}-${m[3]}`] = (pagF[`${m[1]}-${m[2]}-${m[3]}`]||0) + pesos(v);
+    }
+  });
+  desc = {};
+  td.forEach(s => {
+    if (!TD.includes(s.id)) return;
+    let data = {}; try { data = JSON.parse(s.data().data||'{}'); } catch(e){}
+    for (const [f,dia] of Object.entries(data)) {
+      if (!/^\d{4}-\d\d-\d\d$/.test(f)) continue;
+      TURNOS.forEach(t => { desc[f] = (desc[f]||0) + num(dia?.[t]?.descartes); });
+    }
+  });
+  loaded = true;
+}
+
+function dias(a,b){ const out=[]; for(let d=new Date(a+'T00:00:00Z'); iso(d)<=b; d=new Date(d.getTime()+864e5)) out.push(iso(d)); return out; }
+function diaSig(b){ return iso(new Date(new Date(b+'T00:00:00Z').getTime()+864e5)); }
+
+let seq = 0;
+async function render(){
+  let a = $('d1').value, b = $('d2').value;
+  if (!a || !b) return;
+  if (a > b) [a,b] = [b,a];
+  const mine = ++seq;
+  $('st').textContent = 'Cargando…';
+  try {
+    if (!loaded) await cargarBase();
+    const fin = diaSig(b);
+    const [sq, gq] = await Promise.all([
+      getDocs(query(collection(db,'retiros_sueldos'), where(documentId(),'>=',a), where(documentId(),'<',fin))),
+      getDocs(query(collection(db,'gasto_gus'),       where(documentId(),'>=',a), where(documentId(),'<',fin)))
+    ]);
+    if (mine !== seq) return;
+    const sue = {}, bon = {}, gus = {};
+    sq.forEach(s => {
+      for (const t of Object.values(s.data().agentes||{})) {
+        for (const tn of TURNOS) {
+          sue[s.id] = (sue[s.id]||0) + num(t?.[tn]?.sueldo);
+          bon[s.id] = (bon[s.id]||0) + num(t?.[tn]?.bonos);
+        }
+      }
+    });
+    gq.forEach(s => { gus[s.id] = num(s.data().monto); });
+    const tot = [0,0,0,0,0]; let h = '';
+    const ds = dias(a,b);
+    ds.forEach(f => {
+      const r = [pagF[f]||0, desc[f]||0, bon[f]||0, sue[f]||0, gus[f]||0];
+      if (!r.some(x=>x)) return;
+      r.forEach((v,i)=>tot[i]+=v);
+      h += `<tr><td>${f.split('-').reverse().join('/')}</td><td>${fmt(r[0])}</td><td>${fmt(r[0]*6.25)}</td><td>${fmt(r[1])}</td><td>${fmt(r[2])}</td><td>${fmt(r[3])}</td><td>${fmt(r[4])}</td><td>${fmt(r[1]+r[2]+r[3]+r[4])}</td></tr>`;
+    });
+    const sub = tot[1]+tot[2]+tot[3]+tot[4];
+    $('tb').innerHTML = h || '<tr><td colspan="8" style="text-align:center;color:#555">No hay datos en ese rango.</td></tr>';
+    $('tf').innerHTML = `<tr><td>Total</td><td>${fmt(tot[0])}</td><td>${fmt(tot[0]*6.25)}</td><td>${fmt(tot[1])}</td><td>${fmt(tot[2])}</td><td>${fmt(tot[3])}</td><td>${fmt(tot[4])}</td><td>${fmt(sub)}</td></tr>`;
+    const T = [['Stock de fichas',tot[0]*6.25],['Descarte',tot[1]],['Bonificaciones',tot[2]],['Sueldos',tot[3]],['Gastos Gus',tot[4]],['Subtotal',sub],['Pago de fichas',tot[0]]];
+    $('tiles').innerHTML = T.map(([n,v],i)=>`<div class="tile${i===5?' main':''}"><span>${n}</span><b>${fmt(v)}</b></div>`).join('');
+    [...$('pre').children].forEach((x,i)=>x.classList.toggle('on', PRE[i][1]===a && PRE[i][2]===b));
+    $('st').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-AR');
+  } catch(e) {
+    console.warn(e);
+    $('st').textContent = 'No se pudieron cargar los datos. Reintentá.';
+  }
+}
+
+const hoy = new Date(); const y = hoy.getFullYear(), m = hoy.getMonth();
+const ymd = d => iso(new Date(Date.UTC(d.y,d.m,d.d)));
+const PRE = [
+  ['Este mes', ymd({y,m,d:1}), iso(new Date(Date.UTC(y,m,hoy.getDate())))],
+  ['Mes anterior', ymd({y,m:m-1,d:1}), ymd({y,m,d:0})],
+  ['Últimos 7 días', iso(new Date(Date.UTC(y,m,hoy.getDate()-6))), iso(new Date(Date.UTC(y,m,hoy.getDate())))],
+  ['Todo 2026', '2026-01-01', iso(new Date(Date.UTC(y,m,hoy.getDate())))]
+];
+PRE.forEach(([n,a,b])=>{ const x=document.createElement('button'); x.textContent=n; x.onclick=()=>{ $('d1').value=a; $('d2').value=b; render(); }; $('pre').appendChild(x); });
+$('d1').onchange = $('d2').onchange = render;
+$('d1').value = PRE[0][1]; $('d2').value = PRE[0][2];
+render();
+</script>
+</body>
+</html>
