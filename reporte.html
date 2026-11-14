@@ -46,9 +46,9 @@ tfoot td{font-weight:700;background:#d9e1f2}
 </div>
 <div class="tiles" id="tiles"></div>
 <div class="wrap"><table>
-<thead><tr><th>Fecha</th><th>Pago de fichas</th><th>Stock de fichas</th><th>Descarte</th><th>Bonificaciones</th><th>Sueldos</th><th>Gastos Gus</th><th>Subtotal</th></tr></thead>
+<thead><tr><th>Fecha</th><th>Pago de fichas</th><th>Stock de fichas</th><th>Descarte</th><th>Bonificaciones</th><th>Sueldos</th><th>Sueldos ADM</th><th>Gastos Gus</th><th>Subtotal</th></tr></thead>
 <tbody id="tb"></tbody><tfoot id="tf"></tfoot></table></div>
-<p class="note">Datos en vivo de la planilla. Stock de fichas = Pago de fichas × 6,25. Subtotal = Descarte + Bonificaciones + Sueldos + Gastos Gus.</p>
+<p class="note">Datos en vivo de la planilla. Stock de fichas = Pago de fichas × 6,25. Subtotal = Descarte + Bonificaciones + Sueldos + Gastos Gus. Sueldos ADM = Sueldos Jaz + Emi + Gustavo (no entra en el Subtotal).</p>
 </main>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -71,6 +71,7 @@ const TURNOS = ['manana','tarde','noche'];
 const TD = ['AG_18','AG_19','AG_21','AG_22','AG_23','AG_24','AG_25','SIEMPRE_MONO'];
 
 let pagF = {};      // fecha -> pago de fichas (retiros_data, de todos los meses)
+let adm = {};       // fecha -> Sueldos ADM = Jaz + Emi + Gustavo (retiros_data)
 let desc = {};      // fecha -> descarte (turnosData)
 let loaded = false;
 
@@ -79,13 +80,15 @@ async function cargarBase(){
     getDocs(collection(db,'retiros_data')),
     getDocs(collection(db,'turnosData'))
   ]);
-  pagF = {};
+  pagF = {}; adm = {};
   rd.forEach(s => {
     if (s.id === 'test') return;
     let data = {}; try { data = JSON.parse(s.data().data||'{}'); } catch(e){}
     for (const [k,v] of Object.entries(data)) {
       const m = k.match(/^mes_(\d{4})(\d\d)(\d\d)_pagF$/);
       if (m) pagF[`${m[1]}-${m[2]}-${m[3]}`] = (pagF[`${m[1]}-${m[2]}-${m[3]}`]||0) + pesos(v);
+      const a = k.match(/^mes_(\d{4})(\d\d)(\d\d)_sue_(Jaz|Emi|Gustavo)$/);
+      if (a) adm[`${a[1]}-${a[2]}-${a[3]}`] = (adm[`${a[1]}-${a[2]}-${a[3]}`]||0) + pesos(v);
     }
   });
   desc = {};
@@ -128,19 +131,19 @@ async function render(){
       }
     });
     gq.forEach(s => { gus[s.id] = num(s.data().monto); });
-    const tot = [0,0,0,0,0]; let h = '';
+    const tot = [0,0,0,0,0,0]; let h = '';
     const ds = dias(a,b);
     ds.forEach(f => {
-      const r = [pagF[f]||0, desc[f]||0, bon[f]||0, sue[f]||0, gus[f]||0];
+      const r = [pagF[f]||0, desc[f]||0, bon[f]||0, sue[f]||0, gus[f]||0, adm[f]||0];
       if (!r.some(x=>x)) return;
       r.forEach((v,i)=>tot[i]+=v);
-      h += `<tr><td>${f.split('-').reverse().join('/')}</td><td>${fmt(r[0])}</td><td>${fmt(r[0]*6.25)}</td><td>${fmt(r[1])}</td><td>${fmt(r[2])}</td><td>${fmt(r[3])}</td><td>${fmt(r[4])}</td><td>${fmt(r[1]+r[2]+r[3]+r[4])}</td></tr>`;
+      h += `<tr><td>${f.split('-').reverse().join('/')}</td><td>${fmt(r[0])}</td><td>${fmt(r[0]*6.25)}</td><td>${fmt(r[1])}</td><td>${fmt(r[2])}</td><td>${fmt(r[3])}</td><td>${fmt(r[5])}</td><td>${fmt(r[4])}</td><td>${fmt(r[1]+r[2]+r[3]+r[4])}</td></tr>`;
     });
     const sub = tot[1]+tot[2]+tot[3]+tot[4];
-    $('tb').innerHTML = h || '<tr><td colspan="8" style="text-align:center;color:#555">No hay datos en ese rango.</td></tr>';
-    $('tf').innerHTML = `<tr><td>Total</td><td>${fmt(tot[0])}</td><td>${fmt(tot[0]*6.25)}</td><td>${fmt(tot[1])}</td><td>${fmt(tot[2])}</td><td>${fmt(tot[3])}</td><td>${fmt(tot[4])}</td><td>${fmt(sub)}</td></tr>`;
-    const T = [['Stock de fichas',tot[0]*6.25],['Descarte',tot[1]],['Bonificaciones',tot[2]],['Sueldos',tot[3]],['Gastos Gus',tot[4]],['Subtotal',sub],['Pago de fichas',tot[0]]];
-    $('tiles').innerHTML = T.map(([n,v],i)=>`<div class="tile${i===5?' main':''}"><span>${n}</span><b>${fmt(v)}</b></div>`).join('');
+    $('tb').innerHTML = h || '<tr><td colspan="9" style="text-align:center;color:#555">No hay datos en ese rango.</td></tr>';
+    $('tf').innerHTML = `<tr><td>Total</td><td>${fmt(tot[0])}</td><td>${fmt(tot[0]*6.25)}</td><td>${fmt(tot[1])}</td><td>${fmt(tot[2])}</td><td>${fmt(tot[3])}</td><td>${fmt(tot[5])}</td><td>${fmt(tot[4])}</td><td>${fmt(sub)}</td></tr>`;
+    const T = [['Stock de fichas',tot[0]*6.25],['Descarte',tot[1]],['Bonificaciones',tot[2]],['Sueldos',tot[3]],['Sueldos ADM',tot[5]],['Gastos Gus',tot[4]],['Subtotal',sub],['Pago de fichas',tot[0]]];
+    $('tiles').innerHTML = T.map(([n,v],i)=>`<div class="tile${i===6?' main':''}"><span>${n}</span><b>${fmt(v)}</b></div>`).join('');
     [...$('pre').children].forEach((x,i)=>x.classList.toggle('on', PRE[i][1]===a && PRE[i][2]===b));
     $('st').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-AR');
   } catch(e) {
