@@ -1226,7 +1226,7 @@ window._iniciarListenersResumenNuevo = iniciarListenersResumenNuevo;
 
 // Calcula los 8 valores del resumen para el mes en curso, acumulando día 1 al último día cargado
 function calcularResumenNuevo(mes, diasEnMes, y, m, pad) {
-  let stockFichas=0, descarteMes=0, bonoMes=0, sueldosMes=0, gastoGusMes=0, pagFMes=0, billeterasBloqueadasMes=0;
+  let stockFichas=0, descarteMes=0, bonoMes=0, sueldosMes=0, gastoGusMes=0, pagFMes=0, billeterasBloqueadasMes=0, sueldosAdmMes=0;
 
   const sueldosCache = window._sueldosCache || {};
   const turnosCache  = window._turnosDescartesCache || {};
@@ -1238,6 +1238,9 @@ function calcularResumenNuevo(mes, diasEnMes, y, m, pad) {
 
     // PAGO FICHAS (manual, ya local)
     pagFMes += nv(g(`${dkd}_pagF`));
+
+    // SUELDOS ADM (manual, ya local): Sueldos Jaz + Sueldos Emi + Sueldos Gustavo
+    sueldosAdmMes += nv(g(`${dkd}_sue_Jaz`)) + nv(g(`${dkd}_sue_Emi`)) + nv(g(`${dkd}_sue_Gustavo`));
 
     // GASTO GUS (Firebase: gasto_gus)
     gastoGusMes += gastoGusCache[fecha] || 0;
@@ -1264,7 +1267,7 @@ function calcularResumenNuevo(mes, diasEnMes, y, m, pad) {
   stockFichas = pagFMes * 6.25;
   const subTotal = descarteMes + bonoMes + sueldosMes + gastoGusMes;
 
-  return { stockFichas, subTotal, descarteMes, bonoMes, sueldosMes, gastoGusMes, pagFMes, billeterasBloqueadasMes };
+  return { stockFichas, subTotal, descarteMes, bonoMes, sueldosMes, gastoGusMes, pagFMes, billeterasBloqueadasMes, sueldosAdmMes };
 }
 
 function fmtC(v) {
@@ -2527,6 +2530,10 @@ function renderMensual(diaNum) {
         <span id="resNuevo_sueldos" style="font-size:14px;font-weight:700;color:#2e7d32;font-family:monospace">$${fmt(resumen.sueldosMes)}</span>
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px;border-right:1px solid #e8e8e8">
+        <span style="font-size:10px;color:#8a8f98">Sueldos ADM</span>
+        <span id="resNuevo_sueldosAdm" style="font-size:14px;font-weight:700;color:#2e7d32;font-family:monospace">$${fmt(resumen.sueldosAdmMes)}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;padding:4px 14px;border-right:1px solid #e8e8e8">
         <span style="font-size:10px;color:#8a8f98">Gasto Gus</span>
         <span id="resNuevo_gastoGus" style="font-size:14px;font-weight:700;color:#c55a11;font-family:monospace">$${fmt(resumen.gastoGusMes)}</span>
       </div>
@@ -2771,6 +2778,7 @@ function actualizarResumenNuevoLive() {
   set('resNuevo_descarte',    resumen.descarteMes);
   set('resNuevo_bono',        resumen.bonoMes);
   set('resNuevo_sueldos',     resumen.sueldosMes);
+  set('resNuevo_sueldosAdm',  resumen.sueldosAdmMes);
   set('resNuevo_gastoGus',    resumen.gastoGusMes);
   set('resNuevo_billeterasBloqueadas', resumen.billeterasBloqueadasMes);
   set('resNuevo_totalBanco',  bancoActual);
