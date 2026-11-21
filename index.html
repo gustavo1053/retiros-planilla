@@ -454,8 +454,92 @@ function renderFinanciera(diaNum) {
     <tr class="rojo"><td>TOTAL DEL MES</td><td class="calc-r" id="fin_mes_a"></td><td class="calc-r" id="fin_mes_b"></td><td class="calc-r" id="fin_mes_c"></td></tr>
     <tr><td style="font-size:10px">En USD</td><td id="fin_usd_mes" style="text-align:center;font-weight:700;color:#1f3864"></td><td colspan="2"></td></tr>
     <tr><td style="font-size:10px">Control (Fin.+Emi. − Descarte)</td><td colspan="3" id="fin_chk_mes" style="text-align:center;font-weight:700"></td></tr></tbody></table>`;
+  h += finCalcHtml();
   el.innerHTML = h;
   recalcFinanciera();
+  finCalcMostrar();
+}
+
+// ── Calculadora: monto en pesos − % → subtotal → USD al cambio, con sumatoria ──
+// Independiente del resto de la planilla (no usa las claves guardadas de la app).
+let FIN_CALC = (function () {
+  try { return JSON.parse(localStorage.getItem('fin_calc_ops') || '[]'); } catch (e) { return []; }
+})();
+
+function finCalcHtml() {
+  const st = 'width:100%;box-sizing:border-box;font-size:14px;padding:6px 8px;border:1px solid #bbb;border-radius:6px';
+  const lb = 'font-size:11px;color:#555;font-weight:600;display:block;margin-bottom:2px';
+  return `<div class="shdr" style="margin-top:18px">🧮 Calculadora Pesos → Dólares</div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:8px 0">
+    <div style="flex:1;min-width:120px"><label style="${lb}" for="fcalc_monto">Monto en pesos ($)</label><input id="fcalc_monto" inputmode="decimal" placeholder="100000" style="${st}" onkeydown="if(event.key==='Enter')finCalcAgregar()"></div>
+    <div style="flex:1;min-width:90px"><label style="${lb}" for="fcalc_porc">% a restar</label><input id="fcalc_porc" inputmode="decimal" placeholder="10" style="${st}" onkeydown="if(event.key==='Enter')finCalcAgregar()"></div>
+    <div style="flex:1;min-width:120px"><label style="${lb}" for="fcalc_dolar">Dólar al cambio ($)</label><input id="fcalc_dolar" inputmode="decimal" placeholder="1000" style="${st}" onkeydown="if(event.key==='Enter')finCalcAgregar()"></div>
+    <button onclick="finCalcAgregar()" style="padding:8px 14px;font-size:14px;font-weight:700;border:0;border-radius:6px;background:#1a7a1a;color:#fff;cursor:pointer">Calcular y sumar</button>
+  </div>
+  <div id="fcalc_err" style="color:#c00000;font-size:12px;min-height:14px"></div>
+  <div id="fcalc_out"></div>`;
+}
+
+function finCalcNum(id) {
+  const el = document.getElementById(id);
+  let v = (el ? el.value : '').trim().replace('$', '').replace(/\s/g, '');
+  if (v.indexOf(',') >= 0) v = v.replace(/\./g, '').replace(',', '.');
+  return parseFloat(v);
+}
+
+function finCalcFmt(n) {
+  return n.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function finCalcGuardar() {
+  try { localStorage.setItem('fin_calc_ops', JSON.stringify(FIN_CALC)); } catch (e) {}
+}
+
+function finCalcAgregar() {
+  const monto = finCalcNum('fcalc_monto'), porc = finCalcNum('fcalc_porc'), dolar = finCalcNum('fcalc_dolar');
+  const err = document.getElementById('fcalc_err');
+  if (isNaN(monto) || isNaN(porc) || isNaN(dolar) || dolar <= 0) {
+    err.textContent = 'Completá monto, porcentaje y dólar con números (el dólar mayor a 0).';
+    return;
+  }
+  err.textContent = '';
+  const subtotal = monto - monto * porc / 100;
+  FIN_CALC.push({ monto, porc, dolar, subtotal, usd: subtotal / dolar });
+  finCalcGuardar();
+  const m = document.getElementById('fcalc_monto');
+  m.value = '';
+  finCalcMostrar();
+  m.focus();
+}
+
+function finCalcBorrarFila(i) {
+  FIN_CALC.splice(i, 1);
+  finCalcGuardar();
+  finCalcMostrar();
+}
+
+function finCalcLimpiar() {
+  const b = document.getElementById('fcalc_clr');
+  if (b && b.dataset.ok !== '1') { b.dataset.ok = '1'; b.textContent = 'Tocá de nuevo para confirmar'; return; }
+  FIN_CALC = [];
+  finCalcGuardar();
+  finCalcMostrar();
+}
+
+function finCalcMostrar() {
+  const out = document.getElementById('fcalc_out');
+  if (!out) return;
+  if (!FIN_CALC.length) { out.innerHTML = ''; return; }
+  let tp = 0, ts = 0, tu = 0;
+  let h = '<div style="overflow-x:auto"><table><thead><tr><th>#</th><th>Pesos</th><th>%</th><th>Subtotal $</th><th>Dólar</th><th>USD</th><th></th></tr></thead><tbody>';
+  FIN_CALC.forEach((o, i) => {
+    tp += o.monto; ts += o.subtotal; tu += o.usd;
+    h += `<tr><td>${i+1}</td><td>${finCalcFmt(o.monto)}</td><td>${o.porc}</td><td>${finCalcFmt(o.subtotal)}</td><td>${finCalcFmt(o.dolar)}</td><td>${finCalcFmt(o.usd)}</td><td><button onclick="finCalcBorrarFila(${i})" title="Quitar" style="border:0;background:none;cursor:pointer;color:#c00000;font-size:14px">✕</button></td></tr>`;
+  });
+  h += `<tr class="rojo"><td>SUMA</td><td class="calc-r">${finCalcFmt(tp)}</td><td></td><td class="calc-r">${finCalcFmt(ts)}</td><td></td><td class="calc-r">US$ ${finCalcFmt(tu)}</td><td></td></tr></tbody></table></div>
+  <div style="margin:8px 0 14px;font-size:15px;font-weight:700;color:#1a7a1a">TOTAL ACUMULADO: US$ ${finCalcFmt(tu)}</div>
+  <button id="fcalc_clr" onclick="finCalcLimpiar()" style="padding:5px 10px;font-size:12px;border:1px solid #bbb;border-radius:6px;background:#fff;cursor:pointer">Borrar todas las operaciones</button>`;
+  out.innerHTML = h;
 }
 
 // Cotización USD: Bluelytics (fuente "Oficial" = Banco Nación), compra del día anterior
